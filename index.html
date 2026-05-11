@@ -769,7 +769,7 @@ const MODAL_FORMS = {
           <div id="img-preview-wrap">
             ${data.imgUrl
               ? `<img src="${data.imgUrl}" id="img-preview" class="img-preview-img"><button type="button" class="img-remove-btn" onclick="quitarImagen(event)">× Quitar imagen</button>`
-              : `<div class="img-upload-placeholder"><span>📷</span><p>Tocá para subir una foto</p><small>JPG, PNG · Recomendado 16:9 · Máx 3MB</small></div>`
+              : `<div class="img-upload-placeholder"><span>📷</span><p>Tocá para subir una foto</p><small>JPG, PNG · Recomendado 16:9 · Máx 5MB</small></div>`
             }
           </div>
           <input type="file" id="mf-img-file" accept="image/*" style="display:none;" onchange="previsualizarImagen(this)">
@@ -924,7 +924,7 @@ function cambiarEstadoPedido(id, estado) {
 function previsualizarImagen(input) {
   const file = input.files[0];
   if (!file) return;
-  if (file.size > 3 * 1024 * 1024) { toast('La imagen es muy grande. Máximo 3MB.','err'); return; }
+  if (file.size > 5 * 1024 * 1024) { toast('La imagen es muy grande. Máximo 5MB.','err'); return; }
 
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -944,7 +944,7 @@ function quitarImagen(e) {
   e.stopPropagation();
   document.getElementById('mf-imgurl').value = '';
   document.getElementById('img-preview-wrap').innerHTML =
-    `<div class="img-upload-placeholder"><span>📷</span><p>Tocá para subir una foto</p><small>JPG, PNG · Recomendado 16:9 · Máx 3MB</small></div>`;
+    `<div class="img-upload-placeholder"><span>📷</span><p>Tocá para subir una foto</p><small>JPG, PNG · Recomendado 16:9 · Máx 5MB</small></div>`;
   document.getElementById('img-upload-area').style.border = '';
   document.getElementById('mf-img-file').value = '';
 }
