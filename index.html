@@ -182,7 +182,21 @@ tr:hover td{background:var(--gray-50);}
 .chip{width:28px;height:28px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:transform .12s;}
 .chip.sel{border-color:var(--gray-900);transform:scale(1.1);}
 
-/* Responsive */
+/* Upload imagen */
+.img-upload-area{
+  border:2px dashed var(--gray-300);border-radius:var(--r);
+  cursor:pointer;transition:border-color .2s,background .2s;
+  overflow:hidden;min-height:100px;
+}
+.img-upload-area:hover{border-color:var(--blue);background:var(--gray-50);}
+.img-upload-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:6px;text-align:center;}
+.img-upload-placeholder span{font-size:32px;}
+.img-upload-placeholder p{font-size:13px;font-weight:600;color:var(--gray-600);}
+.img-upload-placeholder small{font-size:11px;color:var(--gray-400);}
+.img-preview-img{width:100%;height:160px;object-fit:cover;display:block;}
+.img-remove-btn{display:block;width:100%;padding:8px;font-size:12px;font-weight:700;color:var(--red);background:#FEF2F2;border:none;cursor:pointer;font-family:var(--font);border-top:1px solid #FCA5A5;}
+.img-remove-btn:hover{background:#FEE2E2;}
+
 @media(max-width:768px){
   #sidebar{display:none;}
   .stats-grid{grid-template-columns:1fr 1fr;}
@@ -650,7 +664,14 @@ function renderNoticias() {
   const cats = {ACTIVIDAD:'badge-blue',COMUNICADO:'badge-gray',APUNTES:'badge-green',CONVOCATORIA:'badge-yellow',MESITA:'badge-yellow'};
   document.getElementById('tb-noticias').innerHTML = DATA.noticias.map(n=>`
     <tr>
-      <td class="td-bold">${n.titulo}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:44px;height:32px;border-radius:6px;overflow:hidden;flex-shrink:0;background:${n.heroBg||'#1E293B'};">
+            ${n.imgUrl ? `<img src="${n.imgUrl}" style="width:100%;height:100%;object-fit:cover;">` : ''}
+          </div>
+          <span class="td-bold">${n.titulo}</span>
+        </div>
+      </td>
       <td><span class="badge ${cats[n.cat]||'badge-gray'}">${n.cat}</span></td>
       <td>${n.fecha}</td>
       <td>${n.enCarrusel ? '<span class="badge badge-green">✓ Sí</span>' : '<span class="badge badge-gray">No</span>'}</td>
@@ -741,11 +762,40 @@ const MODAL_FORMS = {
       </div>
       <div class="f-field"><label class="f-lbl">Fecha</label><input class="f-input" id="mf-fecha" value="${data.fecha||''}" placeholder="Hace 2 horas"></div>
       <div class="f-field span2"><label class="f-lbl">Lugar</label><input class="f-input" id="mf-lugar" value="${data.lugar||''}" placeholder="Aula Magna · JurSoc"></div>
-      <div class="f-field span2"><label class="f-lbl">Color/fondo (gradiente CSS o hex)</label><input class="f-input" id="mf-herobg" value="${data.heroBg||'linear-gradient(135deg,#1E3A5F,#2563EB)'}" placeholder="#0F172A o gradient..."></div>
+
+      <div class="f-field span2">
+        <label class="f-lbl">Imagen de fondo</label>
+        <div class="img-upload-area" id="img-upload-area" onclick="document.getElementById('mf-img-file').click()">
+          <div id="img-preview-wrap">
+            ${data.imgUrl
+              ? `<img src="${data.imgUrl}" id="img-preview" class="img-preview-img"><button type="button" class="img-remove-btn" onclick="quitarImagen(event)">× Quitar imagen</button>`
+              : `<div class="img-upload-placeholder"><span>📷</span><p>Tocá para subir una foto</p><small>JPG, PNG · Recomendado 16:9 · Máx 3MB</small></div>`
+            }
+          </div>
+          <input type="file" id="mf-img-file" accept="image/*" style="display:none;" onchange="previsualizarImagen(this)">
+        </div>
+        <input type="hidden" id="mf-imgurl" value="${data.imgUrl||''}">
+      </div>
+
+      <div class="f-field span2">
+        <label class="f-lbl">Color de fondo (si no hay imagen)</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input class="f-input" id="mf-herobg" value="${data.heroBg||'linear-gradient(135deg,#1E3A5F,#2563EB)'}" placeholder="#0F172A o gradient..." style="flex:1;">
+          <div style="width:36px;height:36px;border-radius:8px;border:1px solid var(--gray-200);background:${data.heroBg||'linear-gradient(135deg,#1E3A5F,#2563EB)'};flex-shrink:0;" id="bg-preview"></div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+          ${['linear-gradient(135deg,#1E3A5F,#2563EB)','#1E293B','#0F172A','linear-gradient(135deg,#4C1D95,#6D28D9)','linear-gradient(135deg,#78350F,#D97706)','linear-gradient(135deg,#064E3B,#059669)'].map(bg=>
+            `<div onclick="setBg('${bg}')" style="width:28px;height:28px;border-radius:6px;background:${bg};cursor:pointer;border:2px solid ${(data.heroBg||'').includes(bg.slice(0,10))?'#0F172A':'transparent'};transition:transform .12s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></div>`
+          ).join('')}
+        </div>
+      </div>
+
+      <div class="f-field span2"><label class="f-lbl">Texto de la noticia (opcional)</label><textarea class="f-textarea" id="mf-texto" placeholder="Contenido principal de la noticia...">${data.texto||''}</textarea></div>
+
       <div class="f-field"><label class="f-lbl">Incluir en carrusel</label>
         <select class="f-select" id="mf-carrusel">
-          <option value="1" ${data.enCarrusel?'selected':''}>Sí</option>
-          <option value="0" ${!data.enCarrusel?'selected':''}>No</option>
+          <option value="1" ${data.enCarrusel?'selected':''}>Sí — aparece en portada</option>
+          <option value="0" ${!data.enCarrusel?'selected':''}>No — solo en el feed</option>
         </select>
       </div>
     </div>`,
@@ -792,12 +842,15 @@ function cerrarModal() {
 
 function guardarModal() {
   if (modalType === 'noticia') {
+    const imgUrl = document.getElementById('mf-imgurl').value;
     const obj = {
-      titulo: document.getElementById('mf-titulo').value.trim(),
-      cat: document.getElementById('mf-cat').value,
-      fecha: document.getElementById('mf-fecha').value.trim(),
-      lugar: document.getElementById('mf-lugar').value.trim(),
-      heroBg: document.getElementById('mf-herobg').value.trim(),
+      titulo:     document.getElementById('mf-titulo').value.trim(),
+      cat:        document.getElementById('mf-cat').value,
+      fecha:      document.getElementById('mf-fecha').value.trim(),
+      lugar:      document.getElementById('mf-lugar').value.trim(),
+      heroBg:     document.getElementById('mf-herobg').value.trim(),
+      imgUrl:     imgUrl || '',
+      texto:      document.getElementById('mf-texto').value.trim(),
       enCarrusel: document.getElementById('mf-carrusel').value === '1',
     };
     if (!obj.titulo) { toast('El título es obligatorio','err'); return; }
@@ -867,7 +920,41 @@ function cambiarEstadoPedido(id, estado) {
   toast('Estado actualizado','ok');
 }
 
-// ── CONFIG ──
+// ── IMAGEN UPLOAD ──
+function previsualizarImagen(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 3 * 1024 * 1024) { toast('La imagen es muy grande. Máximo 3MB.','err'); return; }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const url = e.target.result; // base64
+    document.getElementById('mf-imgurl').value = url;
+    document.getElementById('img-preview-wrap').innerHTML =
+      `<img src="${url}" class="img-preview-img" id="img-preview">
+       <button type="button" class="img-remove-btn" onclick="quitarImagen(event)">× Quitar imagen</button>`;
+    // Si hay imagen, el fondo de color pasa a ser secundario
+    document.getElementById('img-upload-area').style.border = '2px solid #6EE7B7';
+    toast('Imagen cargada ✓','ok');
+  };
+  reader.readAsDataURL(file);
+}
+
+function quitarImagen(e) {
+  e.stopPropagation();
+  document.getElementById('mf-imgurl').value = '';
+  document.getElementById('img-preview-wrap').innerHTML =
+    `<div class="img-upload-placeholder"><span>📷</span><p>Tocá para subir una foto</p><small>JPG, PNG · Recomendado 16:9 · Máx 3MB</small></div>`;
+  document.getElementById('img-upload-area').style.border = '';
+  document.getElementById('mf-img-file').value = '';
+}
+
+function setBg(bg) {
+  document.getElementById('mf-herobg').value = bg;
+  document.getElementById('bg-preview').style.background = bg;
+}
+
+
 function guardarConfig() {
   DATA.config.wsp = document.getElementById('cfg-wsp').value;
   DATA.config.horario = document.getElementById('cfg-horario').value;
