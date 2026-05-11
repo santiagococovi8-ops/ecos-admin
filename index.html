@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ECOS Admin — Panel de Administración</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blue:#2563EB;--blue-d:#1D4ED8;--blue-dp:#0F172A;--blue-mid:#1E3A5F;
+  --yellow:#F59E0B;--green:#059669;--red:#DC2626;--purple:#7C3AED;--orange:#D97706;
+  --white:#fff;--bg:#F1F5F9;--bg2:#E2E8F0;
+  --gray-50:#F8FAFC;--gray-100:#F1F5F9;--gray-200:#E2E8F0;--gray-300:#CBD5E1;
+  --gray-400:#94A3B8;--gray-500:#64748B;--gray-600:#475569;--gray-700:#334155;--gray-800:#1E293B;--gray-900:#0F172A;
+  --r:12px;--r-sm:8px;--r-pill:999px;
+  --sh:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
+  --sh-md:0 4px 16px rgba(0,0,0,.1);
+  --font:'Inter',sans-serif;
+  --sidebar:240px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);background:var(--bg);color:var(--gray-800);height:100vh;overflow:hidden;}
+
+/* ── LOGIN ── */
+#login-screen{
+  position:fixed;inset:0;background:linear-gradient(135deg,var(--blue-dp) 0%,var(--blue-mid) 100%);
+  display:flex;align-items:center;justify-content:center;z-index:100;
+  transition:opacity .4s,transform .4s;
+}
+#login-screen.out{opacity:0;transform:translateY(-20px);pointer-events:none;}
+.login-box{
+  background:white;border-radius:20px;padding:36px 32px;width:100%;max-width:380px;
+  box-shadow:0 20px 60px rgba(0,0,0,.3);
+}
+.login-logo{text-align:center;margin-bottom:24px;}
+.login-logo .sun{font-size:48px;display:block;margin-bottom:8px;}
+.login-logo h1{font-size:22px;font-weight:800;color:var(--blue-dp);}
+.login-logo p{font-size:13px;color:var(--gray-500);margin-top:3px;}
+.login-field{margin-bottom:14px;}
+.login-field label{display:block;font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;}
+.login-field input{width:100%;border:1.5px solid var(--gray-200);border-radius:var(--r-sm);padding:11px 12px;font-size:14px;font-family:var(--font);color:var(--gray-800);outline:none;transition:border-color .2s;}
+.login-field input:focus{border-color:var(--blue);}
+.login-field input.err{border-color:var(--red);}
+.login-err{font-size:12px;color:var(--red);margin-top:8px;display:none;text-align:center;}
+.login-err.on{display:block;}
+.btn-login{width:100%;background:var(--blue);color:white;border:none;border-radius:var(--r-pill);padding:13px;font-size:15px;font-weight:700;font-family:var(--font);cursor:pointer;margin-top:6px;transition:opacity .15s,transform .1s;}
+.btn-login:active{opacity:.9;transform:scale(.98);}
+.btn-login:disabled{opacity:.5;cursor:not-allowed;}
+
+/* ── LAYOUT ── */
+#app{display:flex;height:100vh;overflow:hidden;}
+
+/* SIDEBAR */
+#sidebar{
+  width:var(--sidebar);background:var(--blue-dp);display:flex;flex-direction:column;
+  flex-shrink:0;overflow:hidden;
+}
+.sb-logo{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px;}
+.sb-sun{font-size:24px;}
+.sb-name{font-size:14px;font-weight:800;color:white;}
+.sb-sub{font-size:10px;color:rgba(255,255,255,.4);margin-top:1px;}
+.sb-nav{flex:1;padding:8px 8px;overflow-y:auto;}
+.sb-section{font-size:9px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.1em;padding:12px 10px 4px;}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;cursor:pointer;transition:background .15s;margin-bottom:2px;}
+.sb-item:hover{background:rgba(255,255,255,.07);}
+.sb-item.active{background:var(--blue);}
+.sb-item svg{color:rgba(255,255,255,.5);flex-shrink:0;transition:color .15s;}
+.sb-item.active svg{color:white;}
+.sb-item span{font-size:13px;font-weight:500;color:rgba(255,255,255,.6);transition:color .15s;}
+.sb-item.active span{color:white;font-weight:600;}
+.sb-footer{padding:12px 16px;border-top:1px solid rgba(255,255,255,.08);}
+.sb-user{display:flex;align-items:center;gap:8px;}
+.sb-avatar{width:30px;height:30px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:white;flex-shrink:0;}
+.sb-uname{font-size:12px;font-weight:600;color:rgba(255,255,255,.8);}
+.sb-uemail{font-size:10px;color:rgba(255,255,255,.4);}
+.sb-logout{font-size:11px;color:rgba(255,255,255,.4);cursor:pointer;margin-top:6px;background:none;border:none;font-family:var(--font);padding:0;text-align:left;}
+.sb-logout:hover{color:rgba(255,255,255,.8);}
+
+/* MAIN */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.top-bar{height:56px;background:white;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0;}
+.top-title{font-size:17px;font-weight:700;color:var(--gray-900);flex:1;}
+.top-badge{font-size:11px;font-weight:700;color:var(--blue);background:#EFF6FF;padding:3px 10px;border-radius:var(--r-pill);}
+.btn-primary{background:var(--blue);color:white;border:none;border-radius:var(--r-pill);padding:8px 18px;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;display:flex;align-items:center;gap:6px;transition:opacity .15s,transform .1s;}
+.btn-primary:active{opacity:.9;transform:scale(.97);}
+.btn-secondary{background:var(--gray-100);color:var(--gray-700);border:1px solid var(--gray-200);border-radius:var(--r-pill);padding:8px 16px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;transition:background .15s;}
+.btn-secondary:hover{background:var(--gray-200);}
+.btn-danger{background:#FEF2F2;color:var(--red);border:1px solid #FCA5A5;border-radius:var(--r-pill);padding:7px 14px;font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;transition:background .15s;}
+.btn-danger:hover{background:#FEE2E2;}
+.btn-sm{padding:6px 12px;font-size:12px;}
+
+.content{flex:1;overflow-y:auto;padding:20px 24px;}
+
+/* PANEL */
+.panel{display:none;}
+.panel.active{display:block;}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.stat-card{background:white;border-radius:var(--r);padding:18px;box-shadow:var(--sh);}
+.stat-icon{font-size:24px;margin-bottom:8px;}
+.stat-val{font-size:28px;font-weight:800;color:var(--gray-900);line-height:1;}
+.stat-lbl{font-size:12px;color:var(--gray-500);margin-top:4px;}
+.stat-delta{font-size:11px;font-weight:600;margin-top:6px;}
+.stat-delta.up{color:var(--green);}
+.stat-delta.dn{color:var(--red);}
+
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;}
+.chart-card{background:white;border-radius:var(--r);padding:18px;box-shadow:var(--sh);}
+.chart-title{font-size:13px;font-weight:700;color:var(--gray-800);margin-bottom:14px;}
+.bar-chart{display:flex;flex-direction:column;gap:8px;}
+.bar-row{display:flex;align-items:center;gap:10px;}
+.bar-lbl{font-size:12px;color:var(--gray-600);width:80px;flex-shrink:0;text-align:right;}
+.bar-track{flex:1;height:20px;background:var(--gray-100);border-radius:4px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:4px;transition:width .6s ease;}
+.bar-num{font-size:12px;font-weight:600;color:var(--gray-700);width:32px;text-align:right;flex-shrink:0;}
+
+.pie-row{display:flex;align-items:center;gap:16px;}
+.pie-svg{flex-shrink:0;}
+.pie-legend{display:flex;flex-direction:column;gap:6px;}
+.pie-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gray-600);}
+.pie-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+
+/* TABLE */
+.table-card{background:white;border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:16px;}
+.table-header{padding:14px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--gray-100);}
+.table-title{font-size:14px;font-weight:700;color:var(--gray-800);flex:1;}
+.search-input{border:1.5px solid var(--gray-200);border-radius:var(--r-sm);padding:7px 12px;font-size:13px;font-family:var(--font);color:var(--gray-800);outline:none;width:220px;transition:border-color .2s;}
+.search-input:focus{border-color:var(--blue);}
+table{width:100%;border-collapse:collapse;}
+th{font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.06em;padding:10px 18px;text-align:left;background:var(--gray-50);border-bottom:1px solid var(--gray-200);}
+td{font-size:13px;color:var(--gray-700);padding:11px 18px;border-bottom:1px solid var(--gray-100);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--gray-50);}
+.td-bold{font-weight:600;color:var(--gray-900);}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:var(--r-pill);}
+.badge-blue{background:#EFF6FF;color:var(--blue);}
+.badge-green{background:#ECFDF5;color:var(--green);}
+.badge-yellow{background:#FFFBEB;color:var(--orange);}
+.badge-red{background:#FEF2F2;color:var(--red);}
+.badge-purple{background:#EDE9FE;color:var(--purple);}
+.badge-gray{background:var(--gray-100);color:var(--gray-600);}
+.td-actions{display:flex;gap:6px;align-items:center;}
+
+/* FORM MODAL */
+#modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:50;display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;}
+#modal-overlay.on{display:flex;}
+.modal{background:white;border-radius:16px;width:100%;max-width:560px;padding:24px;box-shadow:var(--sh-md);margin:auto;}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+.modal-title{font-size:16px;font-weight:800;color:var(--gray-900);}
+.modal-close{background:var(--gray-100);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:18px;color:var(--gray-600);display:flex;align-items:center;justify-content:center;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.form-grid.full{grid-template-columns:1fr;}
+.f-field{display:flex;flex-direction:column;gap:5px;}
+.f-field.span2{grid-column:span 2;}
+.f-lbl{font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.06em;}
+.f-input,.f-select,.f-textarea{border:1.5px solid var(--gray-200);border-radius:var(--r-sm);padding:10px 12px;font-size:14px;font-family:var(--font);color:var(--gray-800);background:white;outline:none;transition:border-color .2s;width:100%;}
+.f-input:focus,.f-select:focus,.f-textarea:focus{border-color:var(--blue);}
+.f-textarea{resize:vertical;min-height:80px;}
+.f-select{appearance:none;-webkit-appearance:none;}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--gray-100);}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--gray-900);color:white;padding:12px 20px;border-radius:var(--r-pill);font-size:13px;font-weight:600;opacity:0;transition:opacity .3s,transform .3s;z-index:200;pointer-events:none;white-space:nowrap;}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+#toast.ok{background:var(--green);}
+#toast.err{background:var(--red);}
+
+/* Noticias preview */
+.noticia-preview{border-radius:10px;overflow:hidden;margin-bottom:8px;}
+.np-img{height:80px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;position:relative;}
+.np-cat{position:absolute;top:8px;left:8px;font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:2px 8px;border-radius:3px;}
+.np-title{padding:10px 12px;background:white;font-size:13px;font-weight:700;color:var(--gray-800);}
+
+/* Empty state */
+.empty{text-align:center;padding:48px 24px;color:var(--gray-400);}
+.empty .ei{font-size:40px;opacity:.3;margin-bottom:10px;}
+.empty p{font-size:14px;}
+
+/* Color picker chips */
+.color-chips{display:flex;gap:6px;flex-wrap:wrap;}
+.chip{width:28px;height:28px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:transform .12s;}
+.chip.sel{border-color:var(--gray-900);transform:scale(1.1);}
+
+/* Responsive */
+@media(max-width:768px){
+  #sidebar{display:none;}
+  .stats-grid{grid-template-columns:1fr 1fr;}
+  .chart-row{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="sun">☀️</span>
+      <h1>ECOS Admin</h1>
+      <p>Panel de administración · JurSoc UNLP</p>
+    </div>
+    <div class="login-field">
+      <label>Email</label>
+      <input type="email" id="l-email" placeholder="tu@email.com" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="l-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-err" id="l-err">Email o contraseña incorrectos</div>
+    <button class="btn-login" id="l-btn" onclick="doLogin()">Ingresar al panel →</button>
+    <p style="font-size:11px;color:var(--gray-400);text-align:center;margin-top:14px;">Solo admins autorizados de ECOS pueden acceder.</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sb-logo">
+      <span class="sb-sun">☀️</span>
+      <div><div class="sb-name">ECOS Admin</div><div class="sb-sub">JurSoc · UNLP</div></div>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-section">Principal</div>
+      <div class="sb-item active" onclick="goPanel('dashboard')" id="sb-dashboard">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Dashboard</span>
+      </div>
+      <div class="sb-section">Contenido</div>
+      <div class="sb-item" onclick="goPanel('noticias')" id="sb-noticias">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2z"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M4 10h16"/></svg>
+        <span>Noticias</span>
+      </div>
+      <div class="sb-item" onclick="goPanel('apuntes')" id="sb-apuntes">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        <span>Apuntes</span>
+      </div>
+      <div class="sb-item" onclick="goPanel('codigos')" id="sb-codigos">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span>ECódigos</span>
+      </div>
+      <div class="sb-section">Estudiantes</div>
+      <div class="sb-item" onclick="goPanel('usuarios')" id="sb-usuarios">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Usuarios</span>
+      </div>
+      <div class="sb-item" onclick="goPanel('pedidos')" id="sb-pedidos">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        <span>Pedidos</span>
+      </div>
+      <div class="sb-section">Sistema</div>
+      <div class="sb-item" onclick="goPanel('config')" id="sb-config">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41"/><path d="M4.93 4.93l1.41 1.41"/><path d="M4.93 19.07l1.41-1.41"/><path d="M19.07 19.07l-1.41-1.41"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
+        <span>Configuración</span>
+      </div>
+    </nav>
+    <div class="sb-footer">
+      <div class="sb-user">
+        <div class="sb-avatar" id="sb-av">A</div>
+        <div><div class="sb-uname" id="sb-uname">Admin</div><div class="sb-uemail" id="sb-uemail">—</div></div>
+      </div>
+      <button class="sb-logout" onclick="doLogout()">← Cerrar sesión</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div class="top-bar">
+      <div class="top-title" id="top-title">Dashboard</div>
+      <div class="top-badge" id="top-badge">ECOS JurSoc</div>
+      <div id="top-actions"></div>
+    </div>
+    <div class="content">
+
+      <!-- ── DASHBOARD ── -->
+      <div class="panel active" id="panel-dashboard">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-val" id="st-usuarios">—</div>
+            <div class="stat-lbl">Usuarios registrados</div>
+            <div class="stat-delta up" id="st-usuarios-d">↑ Cargando...</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📰</div>
+            <div class="stat-val" id="st-noticias">—</div>
+            <div class="stat-lbl">Noticias publicadas</div>
+            <div class="stat-delta up" id="st-noticias-d">En el feed</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📚</div>
+            <div class="stat-val" id="st-apuntes">—</div>
+            <div class="stat-lbl">Apuntes en catálogo</div>
+            <div class="stat-delta up" id="st-apuntes-d">Disponibles</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🛒</div>
+            <div class="stat-val" id="st-pedidos">—</div>
+            <div class="stat-lbl">Pedidos esta semana</div>
+            <div class="stat-delta up" id="st-pedidos-d">↑ Esta semana</div>
+          </div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-card">
+            <div class="chart-title">Usuarios por año de cursada</div>
+            <div class="bar-chart" id="chart-años"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Apuntes más pedidos</div>
+            <div class="bar-chart" id="chart-apuntes"></div>
+          </div>
+        </div>
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">Últimos registros</div>
+          </div>
+          <table>
+            <thead><tr><th>Nombre</th><th>Legajo</th><th>Año</th><th>Fecha</th><th>Estado</th></tr></thead>
+            <tbody id="tb-recientes"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── NOTICIAS ── -->
+      <div class="panel" id="panel-noticias">
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">Noticias del feed</div>
+            <button class="btn-primary" onclick="abrirModal('noticia')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nueva noticia
+            </button>
+          </div>
+          <table>
+            <thead><tr><th>Título</th><th>Categoría</th><th>Fecha</th><th>Carrusel</th><th>Acciones</th></tr></thead>
+            <tbody id="tb-noticias"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── APUNTES ── -->
+      <div class="panel" id="panel-apuntes">
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">Catálogo de apuntes</div>
+            <input class="search-input" placeholder="Buscar materia..." oninput="filtrarTabla('tb-apuntes',this.value)">
+            <button class="btn-primary" onclick="abrirModal('apunte')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nuevo apunte
+            </button>
+          </div>
+          <table>
+            <thead><tr><th>Materia</th><th>Año</th><th>Páginas</th><th>Precio</th><th>Drive</th><th>Acciones</th></tr></thead>
+            <tbody id="tb-apuntes"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── CÓDIGOS ── -->
+      <div class="panel" id="panel-codigos">
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">ECódigos</div>
+            <button class="btn-primary" onclick="abrirModal('codigo')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nuevo código
+            </button>
+          </div>
+          <table>
+            <thead><tr><th>Nombre</th><th>Edición</th><th>Precio</th><th>Stock</th><th>Acciones</th></tr></thead>
+            <tbody id="tb-codigos"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── USUARIOS ── -->
+      <div class="panel" id="panel-usuarios">
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">Estudiantes registrados</div>
+            <input class="search-input" placeholder="Buscar nombre o legajo..." oninput="filtrarTabla('tb-usuarios',this.value)">
+            <button class="btn-secondary" onclick="exportarCSV()">⬇ Exportar CSV</button>
+          </div>
+          <table>
+            <thead><tr><th>Nombre</th><th>Legajo</th><th>Año</th><th>WhatsApp</th><th>Registro</th><th></th></tr></thead>
+            <tbody id="tb-usuarios"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── PEDIDOS ── -->
+      <div class="panel" id="panel-pedidos">
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">Pedidos recibidos</div>
+            <button class="btn-secondary" onclick="exportarCSV('pedidos')">⬇ Exportar CSV</button>
+          </div>
+          <table>
+            <thead><tr><th>Nombre</th><th>WhatsApp</th><th>Items</th><th>Total</th><th>Pago</th><th>Fecha</th><th>Estado</th></tr></thead>
+            <tbody id="tb-pedidos"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── CONFIG ── -->
+      <div class="panel" id="panel-config">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="table-card" style="padding:20px;">
+            <div style="font-size:14px;font-weight:700;color:var(--gray-800);margin-bottom:16px;">⚙️ Información general</div>
+            <div class="f-field" style="margin-bottom:12px;">
+              <label class="f-lbl">WhatsApp de ECOS</label>
+              <input type="text" class="f-input" id="cfg-wsp" placeholder="+54 221 000 0000">
+            </div>
+            <div class="f-field" style="margin-bottom:12px;">
+              <label class="f-lbl">Horario de mesita</label>
+              <input type="text" class="f-input" id="cfg-horario" placeholder="Lun a vie, 9 a 18hs">
+            </div>
+            <div class="f-field" style="margin-bottom:12px;">
+              <label class="f-lbl">Ubicación mesita</label>
+              <input type="text" class="f-input" id="cfg-ubicacion" placeholder="Hall de entrada, JurSoc">
+            </div>
+            <div class="f-field" style="margin-bottom:16px;">
+              <label class="f-lbl">Instagram</label>
+              <input type="text" class="f-input" id="cfg-ig" placeholder="@ecosjursoc">
+            </div>
+            <button class="btn-primary" onclick="guardarConfig()" style="width:100%;">Guardar cambios</button>
+          </div>
+          <div class="table-card" style="padding:20px;">
+            <div style="font-size:14px;font-weight:700;color:var(--gray-800);margin-bottom:16px;">🔐 Seguridad</div>
+            <div class="f-field" style="margin-bottom:12px;">
+              <label class="f-lbl">Email admin actual</label>
+              <input type="text" class="f-input" id="cfg-email" readonly style="background:var(--gray-50);color:var(--gray-500);">
+            </div>
+            <div class="f-field" style="margin-bottom:16px;">
+              <label class="f-lbl">Nueva contraseña</label>
+              <input type="password" class="f-input" id="cfg-pass" placeholder="Mínimo 8 caracteres">
+            </div>
+            <button class="btn-primary" onclick="cambiarPass()" style="width:100%;background:var(--gray-800);">Cambiar contraseña</button>
+            <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--gray-100);">
+              <div style="font-size:13px;font-weight:700;color:var(--gray-700);margin-bottom:8px;">URL de la app</div>
+              <div style="font-size:13px;color:var(--blue);font-weight:600;">https://ecos-phi-nine.vercel.app</div>
+              <div style="font-size:11px;color:var(--gray-400);margin-top:4px;">Panel de admin: esta página</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay" onclick="if(event.target===this)cerrarModal()">
+  <div class="modal" id="modal-box">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title">Nuevo item</div>
+      <button class="modal-close" onclick="cerrarModal()">×</button>
+    </div>
+    <div id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer">
+      <button class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn-primary" id="modal-save" onclick="guardarModal()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ── CREDENCIALES ADMIN (simple, sin Firebase por ahora) ──
+const ADMIN_CREDS = {
+  email: 'admin@ecosjursoc.com',   // ← cambiá por tu email real
+  password: 'ecos2025admin'         // ← cambiá por tu contraseña real
+};
+
+// ── DATA (misma que la app principal) ──
+let DATA = {
+  noticias: [
+    { id:0, cat:'ACTIVIDAD', titulo:'Asamblea estudiantil — 15 de mayo', fecha:'Hace 2 horas', lugar:'Aula Magna · JurSoc', heroBg:'linear-gradient(135deg,#1E3A5F,#2563EB)', enCarrusel:true },
+    { id:1, cat:'COMUNICADO', titulo:'Posición de ECOS sobre el recorte presupuestario', fecha:'Hace 3 días', lugar:'ECOS · JurSoc', heroBg:'#1E293B', enCarrusel:true },
+    { id:2, cat:'APUNTES', titulo:'Nuevos apuntes de Procesal Civil disponibles', fecha:'Ayer', lugar:'Apuntes ECOS', heroBg:'#0F172A', enCarrusel:true },
+    { id:3, cat:'CONVOCATORIA', titulo:'Sumate a ECOS — colaboradores para prensa', fecha:'Esta semana', lugar:'ECOS · JurSoc', heroBg:'#F59E0B', enCarrusel:false },
+    { id:4, cat:'MESITA', titulo:'Encontranos en el hall de entrada de JurSoc', fecha:'Permanente', lugar:'Hall de entrada', heroBg:'#0F172A', enCarrusel:false },
+  ],
+  apuntes: [
+    { id:1, materia:'Introducción al Derecho', año:'1° año', paginas:180, precio:1200, drive:'https://drive.google.com' },
+    { id:2, materia:'Historia Constitucional Arg.', año:'1° año', paginas:120, precio:900, drive:'https://drive.google.com' },
+    { id:3, materia:'Sociología Jurídica', año:'1° año', paginas:95, precio:800, drive:'https://drive.google.com' },
+    { id:4, materia:'Derecho Civil I', año:'2° año', paginas:220, precio:1500, drive:'https://drive.google.com' },
+    { id:5, materia:'Derecho Penal I', año:'2° año', paginas:195, precio:1400, drive:'https://drive.google.com' },
+    { id:6, materia:'Derecho Constitucional', año:'2° año', paginas:210, precio:1450, drive:'https://drive.google.com' },
+    { id:7, materia:'Procesal Civil y Comercial', año:'3° año', paginas:240, precio:1600, drive:'https://drive.google.com' },
+    { id:8, materia:'Derecho Laboral', año:'3° año', paginas:175, precio:1300, drive:'https://drive.google.com' },
+    { id:9, materia:'Derecho Administrativo', año:'3° año', paginas:200, precio:1500, drive:'https://drive.google.com' },
+    { id:10, materia:'Filosofía del Derecho', año:'4° año', paginas:160, precio:1200, drive:'https://drive.google.com' },
+    { id:11, materia:'Derecho Internacional Público', año:'4° año', paginas:145, precio:1100, drive:'https://drive.google.com' },
+    { id:12, materia:'Derecho Notarial y Registral', año:'5° año', paginas:155, precio:1250, drive:'https://drive.google.com' },
+    { id:13, materia:'Práctica Profesional', año:'5° año', paginas:130, precio:1000, drive:'https://drive.google.com' },
+  ],
+  codigos: [
+    { id:101, nombre:'Código Civil y Comercial', subtitulo:'de la Nación', edicion:'Edición 2024 · Tapa blanda', precio:8500, stock:true },
+    { id:102, nombre:'Código Penal', subtitulo:'de la Nación Argentina', edicion:'Edición 2024 · Tapa blanda', precio:6500, stock:true },
+    { id:103, nombre:'Constitución Nacional', subtitulo:'Argentina', edicion:'Edición 2024 · Formato bolsillo', precio:3500, stock:true },
+  ],
+  usuarios: [
+    { id:1, nombre:'Valentina Sosa', legajo:'24601', año:'2° año', wsp:'+54 221 411 2233', fecha:'2025-05-08' },
+    { id:2, nombre:'Martín Godoy', legajo:'24388', año:'3° año', wsp:'+54 221 455 7890', fecha:'2025-05-07' },
+    { id:3, nombre:'Lucía Fernández', legajo:'25102', año:'1° año', wsp:'+54 221 433 1122', fecha:'2025-05-06' },
+    { id:4, nombre:'Tomás Aguirre', legajo:'23901', año:'4° año', wsp:'+54 221 477 3344', fecha:'2025-05-05' },
+    { id:5, nombre:'Sofía Martínez', legajo:'25210', año:'1° año', wsp:'+54 221 466 5566', fecha:'2025-05-03' },
+    { id:6, nombre:'Diego Romero', legajo:'24750', año:'2° año', wsp:'+54 221 422 9988', fecha:'2025-05-01' },
+  ],
+  pedidos: [
+    { id:1, nombre:'Valentina Sosa', wsp:'+54 221 411 2233', items:'Derecho Civil I × 1', total:1500, pago:'transferencia', fecha:'2025-05-08', estado:'pendiente' },
+    { id:2, nombre:'Martín Godoy', wsp:'+54 221 455 7890', items:'Procesal Civil × 1, Laboral × 1', total:2900, pago:'efectivo', fecha:'2025-05-07', estado:'entregado' },
+    { id:3, nombre:'Lucía Fernández', wsp:'+54 221 433 1122', items:'Intro al Derecho × 2', total:2400, pago:'transferencia', fecha:'2025-05-06', estado:'entregado' },
+    { id:4, nombre:'Tomás Aguirre', wsp:'+54 221 477 3344', items:'Código Civil y Comercial × 1', total:8500, pago:'efectivo', fecha:'2025-05-05', estado:'pendiente' },
+  ],
+  config: { wsp:'+54 221 000 0000', horario:'Lun a vie, 9 a 18hs', ubicacion:'Hall de entrada, JurSoc', ig:'@ecosjursoc' }
+};
+
+// ── ESTADO ──
+let currentPanel = 'dashboard';
+let modalType = null;
+let editId = null;
+let isLoggedIn = false;
+
+// ── LOGIN ──
+function doLogin() {
+  const email = document.getElementById('l-email').value.trim();
+  const pass  = document.getElementById('l-pass').value;
+  const btn   = document.getElementById('l-btn');
+  const err   = document.getElementById('l-err');
+
+  btn.disabled = true; btn.textContent = 'Verificando...';
+  err.classList.remove('on');
+
+  setTimeout(() => {
+    if (email === ADMIN_CREDS.email && pass === ADMIN_CREDS.password) {
+      isLoggedIn = true;
+      document.getElementById('login-screen').classList.add('out');
+      setTimeout(() => document.getElementById('login-screen').style.display = 'none', 450);
+      document.getElementById('sb-uname').textContent = 'Admin ECOS';
+      document.getElementById('sb-uemail').textContent = email;
+      document.getElementById('sb-av').textContent = email[0].toUpperCase();
+      document.getElementById('cfg-email').value = email;
+      initDashboard();
+      renderAll();
+    } else {
+      err.classList.add('on');
+      document.getElementById('l-pass').classList.add('err');
+      btn.disabled = false; btn.textContent = 'Ingresar al panel →';
+    }
+  }, 600);
+}
+
+function doLogout() {
+  isLoggedIn = false;
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-screen').classList.remove('out');
+  document.getElementById('l-pass').value = '';
+  document.getElementById('l-pass').classList.remove('err');
+  document.getElementById('l-err').classList.remove('on');
+  document.getElementById('l-btn').disabled = false;
+  document.getElementById('l-btn').textContent = 'Ingresar al panel →';
+}
+
+// ── NAVEGACIÓN ──
+function goPanel(name) {
+  document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('sb-' + name).classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+  const titles = { dashboard:'Dashboard', noticias:'Noticias', apuntes:'Apuntes', codigos:'ECódigos', usuarios:'Usuarios', pedidos:'Pedidos', config:'Configuración' };
+  document.getElementById('top-title').textContent = titles[name] || name;
+  currentPanel = name;
+  // Acciones del top bar
+  const acts = document.getElementById('top-actions');
+  acts.innerHTML = '';
+  if (name === 'usuarios') {
+    const btn = document.createElement('button');
+    btn.className = 'btn-secondary';
+    btn.textContent = '⬇ Exportar CSV';
+    btn.onclick = exportarCSV;
+    acts.appendChild(btn);
+  }
+}
+
+// ── DASHBOARD ──
+function initDashboard() {
+  document.getElementById('st-usuarios').textContent = DATA.usuarios.length;
+  document.getElementById('st-noticias').textContent = DATA.noticias.length;
+  document.getElementById('st-apuntes').textContent = DATA.apuntes.length;
+  document.getElementById('st-pedidos').textContent = DATA.pedidos.filter(p=>p.estado==='pendiente').length;
+  document.getElementById('st-usuarios-d').textContent = '↑ ' + DATA.usuarios.filter(u=>u.fecha >= '2025-05-01').length + ' esta semana';
+
+  // Chart años
+  const años = {};
+  DATA.usuarios.forEach(u => { años[u.año] = (años[u.año]||0)+1; });
+  const maxAños = Math.max(...Object.values(años));
+  const colors = {'1° año':'#2563EB','2° año':'#059669','3° año':'#D97706','4° año':'#7C3AED','5° año':'#DC2626'};
+  document.getElementById('chart-años').innerHTML = Object.entries(años).map(([a,n])=>`
+    <div class="bar-row">
+      <div class="bar-lbl">${a}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(n/maxAños*100)}%;background:${colors[a]||'#2563EB'};"></div></div>
+      <div class="bar-num">${n}</div>
+    </div>`).join('');
+
+  // Chart apuntes pedidos (simulado)
+  const pedTop = [
+    {n:'Procesal Civil',v:8},
+    {n:'Derecho Civil I',v:6},
+    {n:'Intro al Derecho',v:5},
+    {n:'Derecho Penal I',v:4},
+    {n:'Derecho Laboral',v:3},
+  ];
+  const maxP = 8;
+  document.getElementById('chart-apuntes').innerHTML = pedTop.map(({n,v})=>`
+    <div class="bar-row">
+      <div class="bar-lbl" style="width:100px;font-size:11px;">${n}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(v/maxP*100)}%;background:#2563EB;"></div></div>
+      <div class="bar-num">${v}</div>
+    </div>`).join('');
+
+  // Últimos registros
+  document.getElementById('tb-recientes').innerHTML = DATA.usuarios.slice(0,5).map(u=>`
+    <tr>
+      <td class="td-bold">${u.nombre}</td>
+      <td>${u.legajo}</td>
+      <td><span class="badge badge-blue">${u.año}</span></td>
+      <td>${u.fecha}</td>
+      <td><span class="badge badge-green">Activo</span></td>
+    </tr>`).join('');
+}
+
+// ── RENDER TABLAS ──
+function renderAll() {
+  renderNoticias();
+  renderApuntes();
+  renderCodigos();
+  renderUsuarios();
+  renderPedidos();
+}
+
+function renderNoticias() {
+  const cats = {ACTIVIDAD:'badge-blue',COMUNICADO:'badge-gray',APUNTES:'badge-green',CONVOCATORIA:'badge-yellow',MESITA:'badge-yellow'};
+  document.getElementById('tb-noticias').innerHTML = DATA.noticias.map(n=>`
+    <tr>
+      <td class="td-bold">${n.titulo}</td>
+      <td><span class="badge ${cats[n.cat]||'badge-gray'}">${n.cat}</span></td>
+      <td>${n.fecha}</td>
+      <td>${n.enCarrusel ? '<span class="badge badge-green">✓ Sí</span>' : '<span class="badge badge-gray">No</span>'}</td>
+      <td class="td-actions">
+        <button class="btn-secondary btn-sm" onclick="editarNoticia(${n.id})">Editar</button>
+        <button class="btn-danger btn-sm" onclick="eliminar('noticia',${n.id})">Eliminar</button>
+      </td>
+    </tr>`).join('');
+}
+
+function renderApuntes() {
+  document.getElementById('tb-apuntes').innerHTML = DATA.apuntes.map(a=>`
+    <tr>
+      <td class="td-bold">${a.materia}</td>
+      <td><span class="badge badge-blue">${a.año}</span></td>
+      <td>${a.paginas} págs.</td>
+      <td style="font-weight:700;color:var(--blue);">$${a.precio.toLocaleString('es-AR')}</td>
+      <td><a href="${a.drive}" target="_blank" style="color:var(--blue);font-size:12px;">Ver →</a></td>
+      <td class="td-actions">
+        <button class="btn-secondary btn-sm" onclick="editarApunte(${a.id})">Editar</button>
+        <button class="btn-danger btn-sm" onclick="eliminar('apunte',${a.id})">Eliminar</button>
+      </td>
+    </tr>`).join('');
+}
+
+function renderCodigos() {
+  document.getElementById('tb-codigos').innerHTML = DATA.codigos.map(c=>`
+    <tr>
+      <td class="td-bold">${c.nombre}</td>
+      <td>${c.edicion}</td>
+      <td style="font-weight:700;color:var(--blue);">$${c.precio.toLocaleString('es-AR')}</td>
+      <td>${c.stock ? '<span class="badge badge-green">En stock</span>' : '<span class="badge badge-red">Agotado</span>'}</td>
+      <td class="td-actions">
+        <button class="btn-secondary btn-sm" onclick="editarCodigo(${c.id})">Editar</button>
+      </td>
+    </tr>`).join('');
+}
+
+function renderUsuarios() {
+  document.getElementById('tb-usuarios').innerHTML = DATA.usuarios.map(u=>`
+    <tr>
+      <td class="td-bold">${u.nombre}</td>
+      <td>${u.legajo}</td>
+      <td><span class="badge badge-blue">${u.año}</span></td>
+      <td><a href="https://wa.me/${u.wsp.replace(/\D/g,'')}" target="_blank" style="color:var(--green);font-size:12px;">${u.wsp}</a></td>
+      <td>${u.fecha}</td>
+      <td><button class="btn-danger btn-sm" onclick="eliminar('usuario',${u.id})">Eliminar</button></td>
+    </tr>`).join('');
+}
+
+function renderPedidos() {
+  const estados = {pendiente:'badge-yellow',entregado:'badge-green',cancelado:'badge-red'};
+  document.getElementById('tb-pedidos').innerHTML = DATA.pedidos.map(p=>`
+    <tr>
+      <td class="td-bold">${p.nombre}</td>
+      <td><a href="https://wa.me/${p.wsp.replace(/\D/g,'')}" target="_blank" style="color:var(--green);font-size:12px;">${p.wsp}</a></td>
+      <td style="font-size:12px;">${p.items}</td>
+      <td style="font-weight:700;color:var(--blue);">$${p.total.toLocaleString('es-AR')}</td>
+      <td>${p.pago}</td>
+      <td>${p.fecha}</td>
+      <td>
+        <select class="f-select" style="padding:4px 8px;font-size:12px;width:auto;" onchange="cambiarEstadoPedido(${p.id},this.value)">
+          <option value="pendiente" ${p.estado==='pendiente'?'selected':''}>⏳ Pendiente</option>
+          <option value="entregado" ${p.estado==='entregado'?'selected':''}>✅ Entregado</option>
+          <option value="cancelado" ${p.estado==='cancelado'?'selected':''}>❌ Cancelado</option>
+        </select>
+      </td>
+    </tr>`).join('');
+}
+
+// ── FILTRAR ──
+function filtrarTabla(tbId, q) {
+  const rows = document.querySelectorAll('#'+tbId+' tr');
+  rows.forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+
+// ── MODALES ──
+const MODAL_FORMS = {
+  noticia: (data={}) => `
+    <div class="form-grid">
+      <div class="f-field span2"><label class="f-lbl">Título *</label><input class="f-input" id="mf-titulo" value="${data.titulo||''}" placeholder="Título de la noticia"></div>
+      <div class="f-field"><label class="f-lbl">Categoría</label>
+        <select class="f-select" id="mf-cat">
+          ${['ACTIVIDAD','COMUNICADO','APUNTES','CONVOCATORIA','MESITA'].map(c=>`<option ${data.cat===c?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </div>
+      <div class="f-field"><label class="f-lbl">Fecha</label><input class="f-input" id="mf-fecha" value="${data.fecha||''}" placeholder="Hace 2 horas"></div>
+      <div class="f-field span2"><label class="f-lbl">Lugar</label><input class="f-input" id="mf-lugar" value="${data.lugar||''}" placeholder="Aula Magna · JurSoc"></div>
+      <div class="f-field span2"><label class="f-lbl">Color/fondo (gradiente CSS o hex)</label><input class="f-input" id="mf-herobg" value="${data.heroBg||'linear-gradient(135deg,#1E3A5F,#2563EB)'}" placeholder="#0F172A o gradient..."></div>
+      <div class="f-field"><label class="f-lbl">Incluir en carrusel</label>
+        <select class="f-select" id="mf-carrusel">
+          <option value="1" ${data.enCarrusel?'selected':''}>Sí</option>
+          <option value="0" ${!data.enCarrusel?'selected':''}>No</option>
+        </select>
+      </div>
+    </div>`,
+  apunte: (data={}) => `
+    <div class="form-grid">
+      <div class="f-field span2"><label class="f-lbl">Materia *</label><input class="f-input" id="mf-materia" value="${data.materia||''}" placeholder="Nombre de la materia"></div>
+      <div class="f-field"><label class="f-lbl">Año de cursada</label>
+        <select class="f-select" id="mf-año">
+          ${['1° año','2° año','3° año','4° año','5° año'].map(a=>`<option ${data.año===a?'selected':''}>${a}</option>`).join('')}
+        </select>
+      </div>
+      <div class="f-field"><label class="f-lbl">Páginas</label><input type="number" class="f-input" id="mf-paginas" value="${data.paginas||''}" placeholder="180"></div>
+      <div class="f-field"><label class="f-lbl">Precio ($) *</label><input type="number" class="f-input" id="mf-precio" value="${data.precio||''}" placeholder="1200"></div>
+      <div class="f-field span2"><label class="f-lbl">Link de Drive</label><input class="f-input" id="mf-drive" value="${data.drive||''}" placeholder="https://drive.google.com/..."></div>
+    </div>`,
+  codigo: (data={}) => `
+    <div class="form-grid">
+      <div class="f-field span2"><label class="f-lbl">Nombre *</label><input class="f-input" id="mf-nombre" value="${data.nombre||''}" placeholder="Código Civil y Comercial"></div>
+      <div class="f-field span2"><label class="f-lbl">Subtítulo</label><input class="f-input" id="mf-sub" value="${data.subtitulo||''}" placeholder="de la Nación"></div>
+      <div class="f-field"><label class="f-lbl">Edición</label><input class="f-input" id="mf-edicion" value="${data.edicion||''}" placeholder="Edición 2024"></div>
+      <div class="f-field"><label class="f-lbl">Precio ($) *</label><input type="number" class="f-input" id="mf-precio" value="${data.precio||''}" placeholder="8500"></div>
+      <div class="f-field span2"><label class="f-lbl">Stock disponible</label>
+        <select class="f-select" id="mf-stock">
+          <option value="1" ${data.stock?'selected':''}>Sí</option>
+          <option value="0" ${!data.stock?'selected':''}>No</option>
+        </select>
+      </div>
+    </div>`,
+};
+
+function abrirModal(type, data={}) {
+  modalType = type;
+  editId = data.id || null;
+  const titles = { noticia: editId?'Editar noticia':'Nueva noticia', apunte: editId?'Editar apunte':'Nuevo apunte', codigo: editId?'Editar ECódigo':'Nuevo ECódigo' };
+  document.getElementById('modal-title').textContent = titles[type] || 'Editar';
+  document.getElementById('modal-body').innerHTML = MODAL_FORMS[type](data);
+  document.getElementById('modal-overlay').classList.add('on');
+}
+
+function cerrarModal() {
+  document.getElementById('modal-overlay').classList.remove('on');
+  modalType = null; editId = null;
+}
+
+function guardarModal() {
+  if (modalType === 'noticia') {
+    const obj = {
+      titulo: document.getElementById('mf-titulo').value.trim(),
+      cat: document.getElementById('mf-cat').value,
+      fecha: document.getElementById('mf-fecha').value.trim(),
+      lugar: document.getElementById('mf-lugar').value.trim(),
+      heroBg: document.getElementById('mf-herobg').value.trim(),
+      enCarrusel: document.getElementById('mf-carrusel').value === '1',
+    };
+    if (!obj.titulo) { toast('El título es obligatorio','err'); return; }
+    if (editId !== null) {
+      const idx = DATA.noticias.findIndex(n=>n.id===editId);
+      if (idx>=0) DATA.noticias[idx] = {...DATA.noticias[idx],...obj};
+    } else {
+      obj.id = Date.now();
+      DATA.noticias.push(obj);
+    }
+    renderNoticias();
+  } else if (modalType === 'apunte') {
+    const obj = {
+      materia: document.getElementById('mf-materia').value.trim(),
+      año: document.getElementById('mf-año').value,
+      paginas: parseInt(document.getElementById('mf-paginas').value)||0,
+      precio: parseInt(document.getElementById('mf-precio').value)||0,
+      drive: document.getElementById('mf-drive').value.trim(),
+    };
+    if (!obj.materia || !obj.precio) { toast('Materia y precio son obligatorios','err'); return; }
+    if (editId !== null) {
+      const idx = DATA.apuntes.findIndex(a=>a.id===editId);
+      if (idx>=0) DATA.apuntes[idx] = {...DATA.apuntes[idx],...obj};
+    } else {
+      obj.id = Date.now();
+      DATA.apuntes.push(obj);
+    }
+    renderApuntes();
+  } else if (modalType === 'codigo') {
+    const obj = {
+      nombre: document.getElementById('mf-nombre').value.trim(),
+      subtitulo: document.getElementById('mf-sub').value.trim(),
+      edicion: document.getElementById('mf-edicion').value.trim(),
+      precio: parseInt(document.getElementById('mf-precio').value)||0,
+      stock: document.getElementById('mf-stock').value === '1',
+    };
+    if (!obj.nombre || !obj.precio) { toast('Nombre y precio son obligatorios','err'); return; }
+    if (editId !== null) {
+      const idx = DATA.codigos.findIndex(c=>c.id===editId);
+      if (idx>=0) DATA.codigos[idx] = {...DATA.codigos[idx],...obj};
+    } else {
+      obj.id = Date.now();
+      DATA.codigos.push(obj);
+    }
+    renderCodigos();
+  }
+  cerrarModal();
+  toast('Guardado correctamente ✓','ok');
+}
+
+function editarNoticia(id) { abrirModal('noticia', DATA.noticias.find(n=>n.id===id)); }
+function editarApunte(id)  { abrirModal('apunte',  DATA.apuntes.find(a=>a.id===id)); }
+function editarCodigo(id)  { abrirModal('codigo',  DATA.codigos.find(c=>c.id===id)); }
+
+function eliminar(type, id) {
+  if (!confirm('¿Seguro que querés eliminar este elemento?')) return;
+  if (type==='noticia') DATA.noticias = DATA.noticias.filter(n=>n.id!==id);
+  if (type==='apunte')  DATA.apuntes  = DATA.apuntes.filter(a=>a.id!==id);
+  if (type==='usuario') DATA.usuarios = DATA.usuarios.filter(u=>u.id!==id);
+  renderAll();
+  toast('Eliminado','ok');
+}
+
+function cambiarEstadoPedido(id, estado) {
+  const p = DATA.pedidos.find(p=>p.id===id);
+  if (p) p.estado = estado;
+  toast('Estado actualizado','ok');
+}
+
+// ── CONFIG ──
+function guardarConfig() {
+  DATA.config.wsp = document.getElementById('cfg-wsp').value;
+  DATA.config.horario = document.getElementById('cfg-horario').value;
+  DATA.config.ubicacion = document.getElementById('cfg-ubicacion').value;
+  DATA.config.ig = document.getElementById('cfg-ig').value;
+  toast('Configuración guardada ✓','ok');
+}
+
+function cambiarPass() {
+  const p = document.getElementById('cfg-pass').value;
+  if (p.length < 8) { toast('La contraseña debe tener al menos 8 caracteres','err'); return; }
+  ADMIN_CREDS.password = p;
+  document.getElementById('cfg-pass').value = '';
+  toast('Contraseña actualizada ✓','ok');
+}
+
+// ── EXPORTAR CSV ──
+function exportarCSV(tipo='usuarios') {
+  let rows, headers;
+  if (tipo==='usuarios') {
+    headers = ['Nombre','Legajo','Año','WhatsApp','Fecha de registro'];
+    rows = DATA.usuarios.map(u=>[u.nombre,u.legajo,u.año,u.wsp,u.fecha]);
+  } else {
+    headers = ['Nombre','WhatsApp','Items','Total','Pago','Fecha','Estado'];
+    rows = DATA.pedidos.map(p=>[p.nombre,p.wsp,p.items,p.total,p.pago,p.fecha,p.estado]);
+  }
+  const csv = [headers,...rows].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `ecos-${tipo}-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('CSV descargado ✓','ok');
+}
+
+// ── TOAST ──
+function toast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'on' + (type ? ' '+type : '');
+  setTimeout(() => t.className = '', 2800);
+}
+
+// ── INIT ──
+// Precargar config en el formulario
+document.getElementById('cfg-wsp').value = DATA.config.wsp;
+document.getElementById('cfg-horario').value = DATA.config.horario;
+document.getElementById('cfg-ubicacion').value = DATA.config.ubicacion;
+document.getElementById('cfg-ig').value = DATA.config.ig;
+
+// Enter en login
+document.getElementById('l-email').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('l-pass').focus(); });
+</script>
+</body>
+</html>
