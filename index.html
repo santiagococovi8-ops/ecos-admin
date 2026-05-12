@@ -363,13 +363,30 @@ tr:hover td{background:var(--gray-50);}
           <div class="config-card">
             <div class="config-title">🔐 Cuenta admin</div>
             <div class="f-field" style="margin-bottom:12px;"><label class="f-lbl">Email actual</label><input type="text" class="f-input" id="cfg-email" readonly style="background:var(--gray-50);color:var(--gray-500);"></div>
-            <div style="padding:12px;background:#EFF6FF;border-radius:var(--r-sm);margin-bottom:16px;font-size:12px;color:var(--blue);line-height:1.5;">Para cambiar la contraseña, usá Firebase Console → Authentication → el ícono de lápiz junto a tu usuario.</div>
+            <div style="padding:12px;background:#EFF6FF;border-radius:var(--r-sm);margin-bottom:16px;font-size:12px;color:var(--blue);line-height:1.5;">Para cambiar la contraseña: Firebase Console → Authentication → lápiz junto a tu usuario.</div>
             <div style="padding-top:12px;border-top:1px solid var(--gray-100);">
               <div style="font-size:13px;font-weight:700;color:var(--gray-700);margin-bottom:6px;">URLs del sistema</div>
               <div style="font-size:12px;color:var(--blue);font-weight:600;">App: ecos-phi-nine.vercel.app</div>
               <div style="font-size:12px;color:var(--blue);font-weight:600;margin-top:4px;">Admin: este panel</div>
             </div>
           </div>
+
+          <!-- SEED -->
+          <div class="config-card" style="grid-column:1/-1;">
+            <div class="config-title">🗄️ Datos iniciales</div>
+            <p style="font-size:13px;color:var(--gray-600);line-height:1.6;margin-bottom:16px;">
+              Si Firestore está vacío, usá este botón para cargar todos los datos iniciales de la app
+              (noticias, apuntes y ECódigos). Solo es necesario hacerlo <strong>una vez</strong>.
+              Si ya tenés datos, no hace nada.
+            </p>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+              <button class="btn-primary" onclick="seedDatos()" id="btn-seed" style="background:#059669;">
+                🚀 Cargar datos iniciales en Firestore
+              </button>
+              <span id="seed-status" style="font-size:12px;color:var(--gray-400);"></span>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -987,6 +1004,83 @@ function exportarCSV(tipo) {
   a.download = `ecos-${tipo}-${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
   toast('CSV descargado ✓','ok');
+}
+
+// ── Seed datos iniciales ──
+async function seedDatos() {
+  if (!window._fbGuardar) { toast('Firebase no está listo todavía','err'); return; }
+  const btn = document.getElementById('btn-seed');
+  const sts = document.getElementById('seed-status');
+  btn.disabled = true; btn.textContent = '⏳ Cargando...';
+
+  const SEED_NOTICIAS = [
+    { id:'0', orden:0, cat:'ACTIVIDAD', catBg:'#F59E0B', catTxt:'#0F172A', heroBg:'linear-gradient(135deg,#1E3A5F,#2563EB)', imgUrl:'', titulo:'Asamblea estudiantil — 15 de mayo', fecha:'Hoy', lugar:'Aula Magna · JurSoc', lead:'ECOS convoca a la Asamblea General del 15 de mayo.', texto:'La asamblea se llevará a cabo a las 18hs en el Aula Magna. El orden del día incluirá la situación presupuestaria y la renovación de autoridades.', enCarrusel:true },
+    { id:'1', orden:1, cat:'COMUNICADO', catBg:'#FFFFFF', catTxt:'#2563EB', heroBg:'#1E293B', imgUrl:'', titulo:'Posición de ECOS sobre el recorte presupuestario', fecha:'Esta semana', lugar:'ECOS · JurSoc', lead:'Desde ECOS rechazamos el recorte presupuestario aplicado a las universidades nacionales.', texto:'El recorte representa un ataque directo contra la educación pública y gratuita. ECOS exige la restitución del 100% del presupuesto universitario.', enCarrusel:true },
+    { id:'2', orden:2, cat:'APUNTES', catBg:'#2563EB', catTxt:'#FFFFFF', heroBg:'#0F172A', imgUrl:'', titulo:'Apuntes disponibles para todas las cursadas', fecha:'Hoy', lugar:'Mesita ECOS · JurSoc', lead:'Ya están disponibles los apuntes para todas las materias del año.', texto:'Pasá por la mesita o pedí desde la app. Stock disponible de lunes a viernes de 9 a 18hs.', enCarrusel:true },
+    { id:'3', orden:3, cat:'CONVOCATORIA', catBg:'#0F172A', catTxt:'#FFFFFF', heroBg:'linear-gradient(135deg,#78350F,#D97706)', imgUrl:'', titulo:'Sumate a ECOS — buscamos colaboradores', fecha:'Esta semana', lugar:'ECOS · JurSoc', lead:'Si te interesa la comunicación o el diseño, el Área de Prensa de ECOS te está buscando.', texto:'Redacción de notas, diseño para Instagram, cobertura de eventos. No hace falta experiencia previa.', enCarrusel:false },
+    { id:'4', orden:4, cat:'MESITA', catBg:'#F59E0B', catTxt:'#0F172A', heroBg:'#0F172A', imgUrl:'', titulo:'Encontranos en el hall de entrada de JurSoc', fecha:'Permanente', lugar:'Hall de entrada · UNLP', lead:'La mesita de ECOS es el punto de encuentro en la facultad.', texto:'Lunes a viernes de 9 a 18hs. Apuntes, ECódigos, CopyECOS y consultas.', enCarrusel:false },
+  ];
+
+  const SEED_APUNTES = [
+    { id:'1',  año:'1° año', materia:'Introducción al Derecho',       paginas:180, precio:1200, drive:'https://drive.google.com' },
+    { id:'2',  año:'1° año', materia:'Historia Constitucional Arg.',  paginas:120, precio:900,  drive:'https://drive.google.com' },
+    { id:'3',  año:'1° año', materia:'Sociología Jurídica',           paginas:95,  precio:800,  drive:'https://drive.google.com' },
+    { id:'4',  año:'2° año', materia:'Derecho Civil I',               paginas:220, precio:1500, drive:'https://drive.google.com' },
+    { id:'5',  año:'2° año', materia:'Derecho Penal I',               paginas:195, precio:1400, drive:'https://drive.google.com' },
+    { id:'6',  año:'2° año', materia:'Derecho Constitucional',        paginas:210, precio:1450, drive:'https://drive.google.com' },
+    { id:'7',  año:'3° año', materia:'Procesal Civil y Comercial',    paginas:240, precio:1600, drive:'https://drive.google.com' },
+    { id:'8',  año:'3° año', materia:'Derecho Laboral',               paginas:175, precio:1300, drive:'https://drive.google.com' },
+    { id:'9',  año:'3° año', materia:'Derecho Administrativo',        paginas:200, precio:1500, drive:'https://drive.google.com' },
+    { id:'10', año:'4° año', materia:'Filosofía del Derecho',         paginas:160, precio:1200, drive:'https://drive.google.com' },
+    { id:'11', año:'4° año', materia:'Derecho Internacional Público', paginas:145, precio:1100, drive:'https://drive.google.com' },
+    { id:'12', año:'5° año', materia:'Derecho Notarial y Registral',  paginas:155, precio:1250, drive:'https://drive.google.com' },
+    { id:'13', año:'5° año', materia:'Práctica Profesional',          paginas:130, precio:1000, drive:'https://drive.google.com' },
+  ];
+
+  const SEED_CODIGOS = [
+    { id:'101', nombre:'Código Civil y Comercial', subtitulo:'de la Nación',        badge:'📘', badgeBg:'#EFF6FF', edicion:'Edición 2024 · Tapa blanda',    desc:'Indispensable para Derecho Civil, Comercial y Sucesiones.', precio:8500, stock:true },
+    { id:'102', nombre:'Código Penal',             subtitulo:'de la Nación Argentina', badge:'📕', badgeBg:'#FEF2F2', edicion:'Edición 2024 · Tapa blanda', desc:'Texto oficial con todas las reformas vigentes.',           precio:6500, stock:true },
+    { id:'103', nombre:'Constitución Nacional',    subtitulo:'Argentina',           badge:'📗', badgeBg:'#ECFDF5', edicion:'Edición 2024 · Formato bolsillo', desc:'Texto completo con la reforma de 1994.',                  precio:3500, stock:true },
+  ];
+
+  try {
+    let total = 0;
+
+    // Solo guarda si la colección está vacía
+    if (DATA.noticias.length === 0) {
+      sts.textContent = 'Cargando noticias...';
+      for (const n of SEED_NOTICIAS) await window._fbGuardar('noticias', n.id, n);
+      total += SEED_NOTICIAS.length;
+    }
+
+    if (DATA.apuntes.length === 0) {
+      sts.textContent = 'Cargando apuntes...';
+      for (const a of SEED_APUNTES) await window._fbGuardar('apuntes', a.id, a);
+      total += SEED_APUNTES.length;
+    }
+
+    if (DATA.codigos.length === 0) {
+      sts.textContent = 'Cargando códigos...';
+      for (const c of SEED_CODIGOS) await window._fbGuardar('codigos', c.id, c);
+      total += SEED_CODIGOS.length;
+    }
+
+    if (total > 0) {
+      sts.textContent = `✅ ${total} documentos cargados correctamente`;
+      sts.style.color = '#059669';
+      toast('Datos cargados en Firestore ✓', 'ok');
+    } else {
+      sts.textContent = 'ℹ️ Firestore ya tenía datos — no se modificó nada';
+      sts.style.color = '#D97706';
+    }
+  } catch(e) {
+    sts.textContent = 'Error: ' + e.message;
+    sts.style.color = '#DC2626';
+    toast('Error al cargar datos: ' + e.message, 'err');
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🚀 Cargar datos iniciales en Firestore';
 }
 
 // ── Toast ──
