@@ -851,12 +851,35 @@ function previsualizarImg(input) {
   const file = input.files[0];
   if (!file) return;
   if (file.size > 5*1024*1024) { toast('La imagen supera los 5MB','err'); return; }
+
+  const btn = document.getElementById('modal-save');
+  btn.disabled = true; btn.textContent = 'Procesando imagen...';
+
   const reader = new FileReader();
   reader.onload = e => {
-    document.getElementById('mf-imgurl').value = e.target.result;
-    document.getElementById('img-wrap').innerHTML =
-      `<img src="${e.target.result}" class="img-preview"><button type="button" class="img-remove" onclick="quitarImg(event)">× Quitar imagen</button>`;
-    toast('Imagen lista ✓','ok');
+    // Comprimir la imagen antes de mostrar y subir
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      // Máximo 1200px de ancho manteniendo proporción
+      const maxW = 1200;
+      const ratio = Math.min(1, maxW / img.width);
+      canvas.width  = Math.round(img.width  * ratio);
+      canvas.height = Math.round(img.height * ratio);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      // Comprimir a JPEG 80%
+      const compressed = canvas.toDataURL('image/jpeg', 0.80);
+      const kb = Math.round(compressed.length * 0.75 / 1024);
+
+      document.getElementById('mf-imgurl').value = compressed;
+      document.getElementById('img-wrap').innerHTML =
+        `<img src="${compressed}" class="img-preview">
+         <button type="button" class="img-remove" onclick="quitarImg(event)">× Quitar imagen (${kb}KB)</button>`;
+      btn.disabled = false; btn.textContent = 'Guardar';
+      toast(`Imagen lista · ${kb}KB ✓`, 'ok');
+    };
+    img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
@@ -883,9 +906,15 @@ async function guardarModal() {
     if (modalType === 'noticia') {
       let imgUrl = document.getElementById('mf-imgurl').value;
       // Si es base64 nueva → subir a Storage
-      if (imgUrl.startsWith('data:') && window._fbSubirImagen) {
+    if (imgUrl.startsWith('data:') && window._fbSubirImagen) {
         btn.textContent = 'Subiendo imagen...';
-        imgUrl = await window._fbSubirImagen(imgUrl, 'noticia');
+        toast('Subiendo imagen a Firebase Storage...', '');
+        // Timeout de 30 segundos
+        const uploadPromise = window._fbSubirImagen(imgUrl, 'noticia');
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Tiempo de espera agotado. Intentá con una imagen más pequeña.')), 30000)
+        );
+        imgUrl = await Promise.race([uploadPromise, timeoutPromise]);
       }
       const catMap = {
         ACTIVIDAD:{bg:'#F59E0B',txt:'#0F172A'}, COMUNICADO:{bg:'#FFFFFF',txt:'#2563EB'},
