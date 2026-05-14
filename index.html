@@ -195,7 +195,7 @@ tr:hover td{background:var(--gray-50);}
       <input type="password" id="l-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <div class="login-err" id="l-err">Email o contraseña incorrectos</div>
-    <p class="login-status" id="l-status">Conectando a Firebase...</p>
+    <p class="login-status" id="l-status">Conectando a Supabase...</p>
     <button class="btn-login" id="l-btn" onclick="doLogin()" disabled>Conectando...</button>
     <p style="font-size:11px;color:var(--gray-400);text-align:center;margin-top:14px;">Solo admins autorizados de ECOS.</p>
   </div>
@@ -363,7 +363,7 @@ tr:hover td{background:var(--gray-50);}
           <div class="config-card">
             <div class="config-title">🔐 Cuenta admin</div>
             <div class="f-field" style="margin-bottom:12px;"><label class="f-lbl">Email actual</label><input type="text" class="f-input" id="cfg-email" readonly style="background:var(--gray-50);color:var(--gray-500);"></div>
-            <div style="padding:12px;background:#EFF6FF;border-radius:var(--r-sm);margin-bottom:16px;font-size:12px;color:var(--blue);line-height:1.5;">Para cambiar la contraseña: Firebase Console → Authentication → lápiz junto a tu usuario.</div>
+            <div style="padding:12px;background:#EFF6FF;border-radius:var(--r-sm);margin-bottom:16px;font-size:12px;color:var(--blue);line-height:1.5;">Para cambiar la contraseña: Supabase Dashboard → Authentication → Users → tu usuario.</div>
             <div style="padding-top:12px;border-top:1px solid var(--gray-100);">
               <div style="font-size:13px;font-weight:700;color:var(--gray-700);margin-bottom:6px;">URLs del sistema</div>
               <div style="font-size:12px;color:var(--blue);font-weight:600;">App: ecos-phi-nine.vercel.app</div>
@@ -375,13 +375,13 @@ tr:hover td{background:var(--gray-50);}
           <div class="config-card" style="grid-column:1/-1;">
             <div class="config-title">🗄️ Datos iniciales</div>
             <p style="font-size:13px;color:var(--gray-600);line-height:1.6;margin-bottom:16px;">
-              Si Firestore está vacío, usá este botón para cargar todos los datos iniciales de la app
+              Si Supabase está vacío, usá este botón para cargar todos los datos iniciales de la app
               (noticias, apuntes y ECódigos). Solo es necesario hacerlo <strong>una vez</strong>.
               Si ya tenés datos, no hace nada.
             </p>
             <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
               <button class="btn-primary" onclick="seedDatos()" id="btn-seed" style="background:#059669;">
-                🚀 Cargar datos iniciales en Firestore
+                🚀 Cargar datos iniciales en Supabase
               </button>
               <span id="seed-status" style="font-size:12px;color:var(--gray-400);"></span>
             </div>
@@ -413,144 +413,341 @@ tr:hover td{background:var(--gray-50);}
 <div id="toast"></div>
 
 <!-- ── FIREBASE (module) ── -->
-<script type="module">
-import { initializeApp }                                      from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, onSnapshot,
-         doc, setDoc, deleteDoc, getDoc }                     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { getAuth, signInWithEmailAndPassword,
-         signOut, onAuthStateChanged }                        from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getStorage, ref,
-         uploadString, getDownloadURL }                       from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
+<script>
+// ── SUPABASE CONFIG ──
+const SUPABASE_URL  = 'https://xeqdmhufudoabafqlpku.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhlcWRtaHVmdWRvYWJhZnFscGt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NzIzOTcsImV4cCI6MjA5NDI0ODM5N30.vmpRyI-I6BKAbixH1RQ6nnig42B3FDlupLW2v-P2i7I';
 
-const CFG = {
-  apiKey:            'AIzaSyAZrG-Y-6rMp4GeZpfGvKQLyx9H1GmyHrE',
-  authDomain:        'ecos-jursoc.firebaseapp.com',
-  projectId:         'ecos-jursoc',
-  storageBucket:     'ecos-jursoc.firebasestorage.app',
-  messagingSenderId: '312953910812',
-  appId:             '1:312953910812:web:3d7c42a0a26c890dadd1d9',
+const SB = {
+  async _fetch(path, opts = {}) {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+      ...opts,
+      headers: {
+        'apikey': SUPABASE_ANON,
+        'Authorization': 'Bearer ' + SUPABASE_ANON,
+        'Content-Type': 'application/json',
+        ...((opts.headers) || {}),
+      },
+    });
+    if (!res.ok) throw new Error('SB ' + res.status + ': ' + await res.text());
+    const txt = await res.text();
+    return txt ? JSON.parse(txt) : [];
+  },
+
+  async select(table, qs = '') {
+    return this._fetch(table + (qs ? '?' + qs : ''));
+  },
+
+  async upsert(table, rows) {
+    return this._fetch(table, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON,
+        'Authorization': 'Bearer ' + SUPABASE_ANON,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=representation',
+      },
+      body: JSON.stringify(rows),
+    });
+  },
+
+  async update(table, id, data) {
+    return this._fetch(table + '?id=eq.' + id, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPABASE_ANON,
+        'Authorization': 'Bearer ' + SUPABASE_ANON,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation',
+      },
+      body: JSON.stringify(data),
+    });
+  },
+
+  async remove(table, id) {
+    return this._fetch(table + '?id=eq.' + id, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SUPABASE_ANON,
+        'Authorization': 'Bearer ' + SUPABASE_ANON,
+        'Prefer': 'return=minimal',
+      },
+    });
+  },
+
+  // Login con email/pass via Supabase Auth
+  async login(email, pass) {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_ANON, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass }),
+    });
+    if (!res.ok) {
+      const e = await res.json();
+      throw new Error(e.error_description || e.msg || 'Login incorrecto');
+    }
+    const data = await res.json();
+    sessionStorage.setItem('sb_token', data.access_token);
+    sessionStorage.setItem('sb_email', email);
+    return data;
+  },
+
+  logout() {
+    sessionStorage.removeItem('sb_token');
+    sessionStorage.removeItem('sb_email');
+  },
+
+  getToken() {
+    return sessionStorage.getItem('sb_token');
+  },
+
+  // Auth-fetch: para operaciones que requieren estar logueado
+  async authFetch(path, opts = {}) {
+    const token = this.getToken() || SUPABASE_ANON;
+    const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+      ...opts,
+      headers: {
+        'apikey': SUPABASE_ANON,
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        ...((opts.headers) || {}),
+      },
+    });
+    if (!res.ok) throw new Error('SB ' + res.status + ': ' + await res.text());
+    const txt = await res.text();
+    return txt ? JSON.parse(txt) : [];
+  },
+
+  async authUpsert(table, rows) {
+    return this.authFetch(table, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON,
+        'Authorization': 'Bearer ' + (this.getToken() || SUPABASE_ANON),
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=representation',
+      },
+      body: JSON.stringify(rows),
+    });
+  },
+
+  async authRemove(table, id) {
+    const token = this.getToken() || SUPABASE_ANON;
+    const res = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?id=eq.' + id, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SUPABASE_ANON,
+        'Authorization': 'Bearer ' + token,
+        'Prefer': 'return=minimal',
+      },
+    });
+    if (!res.ok) throw new Error('SB ' + res.status + ': ' + await res.text());
+  },
+
+  // Subir imagen a Storage
+  async uploadImage(bucket, filename, base64DataUrl) {
+    const token = this.getToken() || SUPABASE_ANON;
+    const base64 = base64DataUrl.split(',')[1];
+    const byteStr = atob(base64);
+    const arr = new Uint8Array(byteStr.length);
+    for (let i = 0; i < byteStr.length; i++) arr[i] = byteStr.charCodeAt(i);
+    const blob = new Blob([arr], { type: 'image/jpeg' });
+    const path = filename + '-' + Date.now() + '.jpg';
+    const res = await fetch(SUPABASE_URL + '/storage/v1/object/' + bucket + '/' + path, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON,
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'image/jpeg',
+        'x-upsert': 'true',
+      },
+      body: blob,
+    });
+    if (!res.ok) throw new Error('Storage error: ' + await res.text());
+    return SUPABASE_URL + '/storage/v1/object/public/' + bucket + '/' + path;
+  },
+
+  // Realtime via WebSocket
+  subscribe(table, callback) {
+    const wsUrl = SUPABASE_URL.replace('https', 'wss') + '/realtime/v1/websocket?apikey=' + SUPABASE_ANON + '&vsn=1.0.0';
+    let ws, hb;
+    const connect = () => {
+      ws = new WebSocket(wsUrl);
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ topic: 'realtime:*', event: 'phx_join', payload: {}, ref: '1' }));
+        ws.send(JSON.stringify({
+          topic: 'realtime:public:' + table,
+          event: 'phx_join',
+          payload: { config: { broadcast: { self: true }, postgres_changes: [{ event: '*', schema: 'public', table }] } },
+          ref: '2',
+        }));
+        hb = setInterval(() => ws.send(JSON.stringify({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: 'hb' })), 25000);
+      };
+      ws.onmessage = (e) => {
+        try { const msg = JSON.parse(e.data); if (msg.event === 'postgres_changes') callback(msg.payload); } catch {}
+      };
+      ws.onclose = () => { clearInterval(hb); setTimeout(connect, 3000); };
+    };
+    connect();
+  },
+};
+window._sb = SB;
+</script>
+<script>
+// ── SUPABASE AUTH ──
+(async () => {
+  const lBtn  = document.getElementById('l-btn');
+  const lSts  = document.getElementById('l-status');
+  lBtn.disabled  = false;
+  lBtn.textContent = 'Ingresar al panel →';
+  lSts.textContent = '✓ Supabase listo';
+  lSts.style.color = '#059669';
+})();
+
+window._sbLogin = async (email, pass) => {
+  await SB.login(email, pass);
 };
 
-const app  = initializeApp(CFG);
-const db   = getFirestore(app);
-const auth = getAuth(app);
-const st   = getStorage(app);
-
-// ── Habilitar el botón de login ──
-const lBtn = document.getElementById('l-btn');
-const lSts = document.getElementById('l-status');
-lBtn.disabled = false;
-lBtn.textContent = 'Ingresar al panel →';
-lSts.textContent = '✓ Firebase listo';
-lSts.style.color = '#059669';
-
-// ── Login ──
-window._fbLogin = async (email, pass) => {
-  await signInWithEmailAndPassword(auth, email, pass);
-};
-
-// ── Logout ──
-window._fbLogout = async () => {
-  await signOut(auth);
+window._sbLogout = () => {
+  SB.logout();
   window.location.reload();
 };
 
-// ── Auth state ──
-onAuthStateChanged(auth, async user => {
-  if (!user) return;
-
-  const lSts2 = document.getElementById('l-status');
-  const lBtn2 = document.getElementById('l-btn');
-
-  try {
-    if (lSts2) { lSts2.textContent = 'Verificando permisos...'; lSts2.style.color = '#D97706'; }
-
-    const snap = await getDoc(doc(db, 'admins', user.email));
-
-    if (!snap.exists()) {
-      await signOut(auth);
-      const err = document.getElementById('l-err');
-      err.textContent = '⚠️ Tu email (' + user.email + ') no está en la colección "admins" de Firestore. Agregalo con ID = tu email y campo activo:true.';
-      err.classList.add('on');
-      if (lBtn2) { lBtn2.disabled = false; lBtn2.textContent = 'Ingresar al panel →'; }
-      if (lSts2) { lSts2.textContent = '✓ Firebase listo'; lSts2.style.color = '#059669'; }
-      return;
-    }
-
-    // ✅ Admin válido
-    if (lSts2) lSts2.textContent = '✓ Acceso concedido';
-    document.getElementById('login-screen').classList.add('out');
-    setTimeout(() => document.getElementById('login-screen').style.display = 'none', 450);
-    document.getElementById('sb-uname').textContent = 'Admin ECOS';
-    document.getElementById('sb-uemail').textContent = user.email;
-    document.getElementById('sb-av').textContent = user.email[0].toUpperCase();
-    document.getElementById('cfg-email').value = user.email;
-    iniciarListeners();
-
-  } catch(e) {
-    const err = document.getElementById('l-err');
-    err.textContent = 'Error: ' + e.message + ' (código: ' + e.code + ')';
-    err.classList.add('on');
-    if (lBtn2) { lBtn2.disabled = false; lBtn2.textContent = 'Ingresar al panel →'; }
-    if (lSts2) { lSts2.textContent = '✓ Firebase listo'; lSts2.style.color = '#059669'; }
-    console.error('Error auth state:', e);
+// ── GUARDAR en Supabase ──
+window._fbGuardar = async (tabla, id, data) => {
+  // Normalizar nombres de campo camelCase → snake_case para noticias
+  let row = { ...data, id: String(id) };
+  if (tabla === 'noticias') {
+    if ('catBg'      in row) { row.cat_bg   = row.catBg;      delete row.catBg; }
+    if ('catTxt'     in row) { row.cat_txt  = row.catTxt;     delete row.catTxt; }
+    if ('heroBg'     in row) { row.hero_bg  = row.heroBg;     delete row.heroBg; }
+    if ('imgUrl'     in row) { row.img_url  = row.imgUrl;     delete row.imgUrl; }
+    if ('enCarrusel' in row) { row.en_carrusel = row.enCarrusel; delete row.enCarrusel; }
   }
-});
-
-function showLoginError(msg) {
-  const err = document.getElementById('l-err');
-  err.textContent = msg;
-  err.classList.add('on');
-  const btn = document.getElementById('l-btn');
-  btn.disabled = false;
-  btn.textContent = 'Ingresar al panel →';
-}
-
-// ── Listeners tiempo real ──
-function iniciarListeners() {
-  onSnapshot(collection(db, 'noticias'), snap => {
-    DATA.noticias = snap.docs.map(d => ({...d.data(), id: d.id}));
-    DATA.noticias.sort((a,b) => (a.orden||0) - (b.orden||0));
-    if (['noticias','dashboard'].includes(currentPanel)) { renderNoticias(); initDashboard(); }
-  });
-  onSnapshot(collection(db, 'apuntes'), snap => {
-    DATA.apuntes = snap.docs.map(d => ({...d.data(), id: d.id}));
-    if (['apuntes','dashboard'].includes(currentPanel)) { renderApuntes(); initDashboard(); }
-  });
-  onSnapshot(collection(db, 'codigos'), snap => {
-    DATA.codigos = snap.docs.map(d => ({...d.data(), id: d.id}));
-    if (currentPanel === 'codigos') renderCodigos();
-  });
-  onSnapshot(collection(db, 'usuarios'), snap => {
-    DATA.usuarios = snap.docs.map(d => ({...d.data(), id: d.id}));
-    if (['usuarios','dashboard'].includes(currentPanel)) { renderUsuarios(); initDashboard(); }
-  });
-  onSnapshot(collection(db, 'pedidos'), snap => {
-    DATA.pedidos = snap.docs.map(d => ({...d.data(), id: d.id}));
-    if (currentPanel === 'pedidos') renderPedidos();
-  });
-  initDashboard();
-  renderAll();
-  toast('Firebase conectado ✓', 'ok');
-}
-
-// ── Guardar en Firestore ──
-window._fbGuardar = async (col, id, data) => {
-  await setDoc(doc(db, col, String(id)), data);
+  if (tabla === 'apuntes') {
+    if ('año' in row) { row.anio = row.año; delete row.año; }
+  }
+  if (tabla === 'codigos') {
+    if ('badgeBg' in row) { row.badge_bg = row.badgeBg; delete row.badgeBg; }
+  }
+  await SB.authUpsert(tabla, [row]);
 };
 
-// ── Eliminar de Firestore ──
-window._fbEliminar = async (col, id) => {
-  await deleteDoc(doc(db, col, String(id)));
+// ── ELIMINAR de Supabase ──
+window._fbEliminar = async (tabla, id) => {
+  await SB.authRemove(tabla, String(id));
 };
 
-// ── Subir imagen a Storage ──
+// ── SUBIR IMAGEN a Supabase Storage ──
 window._fbSubirImagen = async (base64, nombre) => {
-  const imgRef = ref(st, `noticias/${nombre}-${Date.now()}.jpg`);
-  const snap   = await uploadString(imgRef, base64, 'data_url');
-  return await getDownloadURL(snap.ref);
+  return await SB.uploadImage('noticias', nombre, base64);
 };
-</script>
+
+// ── SEED datos iniciales ──
+window._seedSupabase = async () => {
+  const btn = document.getElementById('btn-seed');
+  const sts = document.getElementById('seed-status');
+  btn.disabled = true; btn.textContent = '⏳ Cargando...';
+  try {
+    let total = 0;
+    const [n,a,c] = await Promise.all([
+      SB.select('noticias','select=id&limit=1'),
+      SB.select('apuntes','select=id&limit=1'),
+      SB.select('codigos','select=id&limit=1'),
+    ]);
+    if (n.length === 0) {
+      sts.textContent = 'Cargando noticias...';
+      await SB.authUpsert('noticias',[
+        {id:'0',orden:0,cat:'ACTIVIDAD',cat_bg:'#F59E0B',cat_txt:'#0F172A',hero_bg:'linear-gradient(135deg,#1E3A5F,#2563EB)',img_url:'',titulo:'Asamblea estudiantil — 15 de mayo',fecha:'Hoy',lugar:'Aula Magna · JurSoc',lead:'ECOS convoca a la Asamblea General del 15 de mayo.',texto:'La asamblea se llevará a cabo a las 18hs en el Aula Magna.',en_carrusel:true},
+        {id:'1',orden:1,cat:'COMUNICADO',cat_bg:'#FFFFFF',cat_txt:'#2563EB',hero_bg:'#1E293B',img_url:'',titulo:'Posición de ECOS sobre el recorte presupuestario',fecha:'Esta semana',lugar:'ECOS · JurSoc',lead:'Desde ECOS rechazamos el recorte presupuestario.',texto:'ECOS exige la restitución del 100% del presupuesto universitario.',en_carrusel:true},
+        {id:'2',orden:2,cat:'APUNTES',cat_bg:'#2563EB',cat_txt:'#FFFFFF',hero_bg:'#0F172A',img_url:'',titulo:'Apuntes disponibles para todas las cursadas',fecha:'Hoy',lugar:'Mesita ECOS · JurSoc',lead:'Ya están disponibles los apuntes para todas las materias.',texto:'Pasá por la mesita o pedí desde la app. Lunes a viernes de 9 a 18hs.',en_carrusel:true},
+        {id:'3',orden:3,cat:'CONVOCATORIA',cat_bg:'#0F172A',cat_txt:'#FFFFFF',hero_bg:'linear-gradient(135deg,#78350F,#D97706)',img_url:'',titulo:'Sumate a ECOS — buscamos colaboradores',fecha:'Esta semana',lugar:'ECOS · JurSoc',lead:'Si te interesa la comunicación o el diseño, ECOS te busca.',texto:'No hace falta experiencia previa.',en_carrusel:false},
+        {id:'4',orden:4,cat:'MESITA',cat_bg:'#F59E0B',cat_txt:'#0F172A',hero_bg:'#0F172A',img_url:'',titulo:'Encontranos en el hall de entrada de JurSoc',fecha:'Permanente',lugar:'Hall de entrada · UNLP',lead:'La mesita de ECOS es el punto de encuentro.',texto:'Lunes a viernes de 9 a 18hs.',en_carrusel:false},
+      ]); total += 5;
+    }
+    if (a.length === 0) {
+      sts.textContent = 'Cargando apuntes...';
+      await SB.authUpsert('apuntes',[
+        {id:'1',anio:'1° año',materia:'Introducción al Derecho',paginas:180,precio:1200,drive:'https://drive.google.com'},
+        {id:'2',anio:'1° año',materia:'Historia Constitucional Arg.',paginas:120,precio:900,drive:'https://drive.google.com'},
+        {id:'3',anio:'1° año',materia:'Sociología Jurídica',paginas:95,precio:800,drive:'https://drive.google.com'},
+        {id:'4',anio:'2° año',materia:'Derecho Civil I',paginas:220,precio:1500,drive:'https://drive.google.com'},
+        {id:'5',anio:'2° año',materia:'Derecho Penal I',paginas:195,precio:1400,drive:'https://drive.google.com'},
+        {id:'6',anio:'2° año',materia:'Derecho Constitucional',paginas:210,precio:1450,drive:'https://drive.google.com'},
+        {id:'7',anio:'3° año',materia:'Procesal Civil y Comercial',paginas:240,precio:1600,drive:'https://drive.google.com'},
+        {id:'8',anio:'3° año',materia:'Derecho Laboral',paginas:175,precio:1300,drive:'https://drive.google.com'},
+        {id:'9',anio:'3° año',materia:'Derecho Administrativo',paginas:200,precio:1500,drive:'https://drive.google.com'},
+        {id:'10',anio:'4° año',materia:'Filosofía del Derecho',paginas:160,precio:1200,drive:'https://drive.google.com'},
+        {id:'11',anio:'4° año',materia:'Derecho Internacional Público',paginas:145,precio:1100,drive:'https://drive.google.com'},
+        {id:'12',anio:'5° año',materia:'Derecho Notarial y Registral',paginas:155,precio:1250,drive:'https://drive.google.com'},
+        {id:'13',anio:'5° año',materia:'Práctica Profesional',paginas:130,precio:1000,drive:'https://drive.google.com'},
+      ]); total += 13;
+    }
+    if (c.length === 0) {
+      sts.textContent = 'Cargando códigos...';
+      await SB.authUpsert('codigos',[
+        {id:'101',nombre:'Código Civil y Comercial',subtitulo:'de la Nación',badge:'📘',badge_bg:'#EFF6FF',edicion:'Edición 2024 · Tapa blanda',desc:'Indispensable para Derecho Civil, Comercial y Sucesiones.',precio:8500,stock:true},
+        {id:'102',nombre:'Código Penal',subtitulo:'de la Nación Argentina',badge:'📕',badge_bg:'#FEF2F2',edicion:'Edición 2024 · Tapa blanda',desc:'Texto oficial con todas las reformas vigentes.',precio:6500,stock:true},
+        {id:'103',nombre:'Constitución Nacional',subtitulo:'Argentina',badge:'📗',badge_bg:'#ECFDF5',edicion:'Edición 2024 · Formato bolsillo',desc:'Texto completo con la reforma de 1994.',precio:3500,stock:true},
+      ]); total += 3;
+    }
+    if (total > 0) {
+      sts.textContent = `✅ ${total} registros cargados correctamente`;
+      sts.style.color = '#059669';
+      toast('Datos cargados en Supabase ✓', 'ok');
+    } else {
+      sts.textContent = 'ℹ️ Supabase ya tenía datos — no se modificó nada';
+      sts.style.color = '#D97706';
+    }
+  } catch(e) {
+    sts.textContent = 'Error: ' + e.message;
+    sts.style.color = '#DC2626';
+    toast('Error al cargar datos: ' + e.message, 'err');
+  }
+  btn.disabled = false;
+  btn.textContent = '🚀 Cargar datos iniciales en Supabase';
+};
+
+// ── LISTENERS tiempo real ──
+function iniciarListeners() {
+  const reload = (tabla, campo) => SB.select(tabla, 'order=id.asc').then(rows => {
+    if (tabla === 'noticias') {
+      DATA.noticias = rows.map(r => ({...r, catBg:r.cat_bg||r.catBg, catTxt:r.cat_txt||r.catTxt, heroBg:r.hero_bg||r.heroBg, imgUrl:r.img_url||r.imgUrl||'', enCarrusel:r.en_carrusel!==undefined?r.en_carrusel:r.enCarrusel}));
+      DATA.noticias.sort((a,b)=>(a.orden||0)-(b.orden||0));
+      if (['noticias','dashboard'].includes(currentPanel)) { renderNoticias(); initDashboard(); }
+    }
+    if (tabla === 'apuntes') {
+      DATA.apuntes = rows.map(r => ({...r, año:r.anio||r.año}));
+      if (['apuntes','dashboard'].includes(currentPanel)) { renderApuntes(); initDashboard(); }
+    }
+    if (tabla === 'codigos') {
+      DATA.codigos = rows.map(r => ({...r, badgeBg:r.badge_bg||r.badgeBg}));
+      if (currentPanel === 'codigos') renderCodigos();
+    }
+    if (tabla === 'usuarios') {
+      DATA.usuarios = rows;
+      if (['usuarios','dashboard'].includes(currentPanel)) { renderUsuarios(); initDashboard(); }
+    }
+    if (tabla === 'pedidos') {
+      DATA.pedidos = rows;
+      if (currentPanel === 'pedidos') renderPedidos();
+    }
+  }).catch(e => console.warn('Error cargando ' + tabla + ':', e.message));
+
+  // Carga inicial
+  reload('noticias'); reload('apuntes'); reload('codigos'); reload('usuarios'); reload('pedidos');
+
+  // Realtime
+  SB.subscribe('noticias',  () => reload('noticias'));
+  SB.subscribe('apuntes',   () => reload('apuntes'));
+  SB.subscribe('codigos',   () => reload('codigos'));
+  SB.subscribe('usuarios',  () => reload('usuarios'));
+  SB.subscribe('pedidos',   () => reload('pedidos'));
+
+  initDashboard();
+  toast('Supabase conectado ✓', 'ok');
+}
+
 
 <!-- ── APP LOGIC ── -->
 <script>
@@ -582,40 +779,37 @@ function doLogin() {
   err.classList.remove('on');
   document.getElementById('l-pass').classList.remove('err');
 
-  // Esperar a que Firebase esté listo
-  let intentos = 0;
-  const tryLogin = () => {
-    intentos++;
-    if (window._fbLogin) {
-      window._fbLogin(email, pass).catch(e => {
-        const msgs = {
-          'auth/invalid-credential':   'Email o contraseña incorrectos.',
-          'auth/user-not-found':        'No existe un usuario con ese email.',
-          'auth/wrong-password':        'Contraseña incorrecta.',
-          'auth/invalid-email':         'El formato del email no es válido.',
-          'auth/too-many-requests':     'Demasiados intentos. Esperá unos minutos.',
-          'auth/network-request-failed':'Sin conexión a internet.',
-        };
-        err.textContent = msgs[e.code] || 'Error: ' + e.message;
+  // Esperar a que Supabase esté listo
+  if (window._sbLogin) {
+    window._sbLogin(email, pass)
+      .then(() => {
+        // Login OK → mostrar panel
+        document.getElementById('l-status').textContent = '✓ Acceso concedido';
+        document.getElementById('login-screen').classList.add('out');
+        setTimeout(() => document.getElementById('login-screen').style.display = 'none', 450);
+        document.getElementById('sb-uname').textContent = 'Admin ECOS';
+        document.getElementById('sb-uemail').textContent = email;
+        document.getElementById('sb-av').textContent = email[0].toUpperCase();
+        document.getElementById('cfg-email').value = email;
+        iniciarListeners();
+      })
+      .catch(e => {
+        err.textContent = e.message || 'Email o contraseña incorrectos.';
         err.classList.add('on');
         document.getElementById('l-pass').classList.add('err');
         btn.disabled = false;
         btn.textContent = 'Ingresar al panel →';
       });
-    } else if (intentos < 50) {
-      setTimeout(tryLogin, 100);
-    } else {
-      err.textContent = 'Firebase no cargó. Recargá la página.';
-      err.classList.add('on');
-      btn.disabled = false;
-      btn.textContent = 'Ingresar al panel →';
-    }
-  };
-  tryLogin();
+  } else {
+    err.textContent = 'Supabase no cargó. Recargá la página.';
+    err.classList.add('on');
+    btn.disabled = false;
+    btn.textContent = 'Ingresar al panel →';
+  }
 }
 
 function doLogout() {
-  if (window._fbLogout) window._fbLogout();
+  if (window._sbLogout) window._sbLogout();
   else window.location.reload();
 }
 
@@ -908,7 +1102,7 @@ async function guardarModal() {
       // Si es base64 nueva → subir a Storage
     if (imgUrl.startsWith('data:') && window._fbSubirImagen) {
         btn.textContent = 'Subiendo imagen...';
-        toast('Subiendo imagen a Firebase Storage...', '');
+        toast('Subiendo imagen a Supabase Storage...', '');
         // Timeout de 30 segundos
         const uploadPromise = window._fbSubirImagen(imgUrl, 'noticia');
         const timeoutPromise = new Promise((_, reject) =>
@@ -967,7 +1161,7 @@ async function guardarModal() {
     if (window._fbGuardar) {
       await window._fbGuardar(col, id, obj);
     } else {
-      // Fallback sin Firebase
+      // Fallback sin Supabase
       const arr = DATA[col];
       const idx = arr.findIndex(x => String(x.id) === String(id));
       if (idx >= 0) arr[idx] = obj; else arr.push(obj);
@@ -1036,8 +1230,8 @@ function exportarCSV(tipo) {
 }
 
 // ── Seed datos iniciales ──
-async function seedDatos() {
-  if (!window._fbGuardar) { toast('Firebase no está listo todavía','err'); return; }
+async function seedDatos() { if (window._seedSupabase) { await window._seedSupabase(); return; }
+  if (!window._fbGuardar) { toast('Supabase no está listo todavía','err'); return; }
   const btn = document.getElementById('btn-seed');
   const sts = document.getElementById('seed-status');
   btn.disabled = true; btn.textContent = '⏳ Cargando...';
@@ -1097,7 +1291,7 @@ async function seedDatos() {
     if (total > 0) {
       sts.textContent = `✅ ${total} documentos cargados correctamente`;
       sts.style.color = '#059669';
-      toast('Datos cargados en Firestore ✓', 'ok');
+      toast('Datos cargados en Supabase ✓', 'ok');
     } else {
       sts.textContent = 'ℹ️ Firestore ya tenía datos — no se modificó nada';
       sts.style.color = '#D97706';
@@ -1109,7 +1303,7 @@ async function seedDatos() {
   }
 
   btn.disabled = false;
-  btn.textContent = '🚀 Cargar datos iniciales en Firestore';
+  btn.textContent = '🚀 Cargar datos iniciales en Supabase';
 }
 
 // ── Toast ──
