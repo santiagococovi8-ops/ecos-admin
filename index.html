@@ -686,9 +686,9 @@ window._seedSupabase = async () => {
     if (c.length === 0) {
       sts.textContent = 'Cargando códigos...';
       await SB.authUpsert('codigos',[
-        {id:'101',nombre:'Código Civil y Comercial',subtitulo:'de la Nación',badge:'📘',badge_bg:'#EFF6FF',edicion:'Edición 2024 · Tapa blanda',desc:'Indispensable para Derecho Civil, Comercial y Sucesiones.',precio:8500,stock:true},
-        {id:'102',nombre:'Código Penal',subtitulo:'de la Nación Argentina',badge:'📕',badge_bg:'#FEF2F2',edicion:'Edición 2024 · Tapa blanda',desc:'Texto oficial con todas las reformas vigentes.',precio:6500,stock:true},
-        {id:'103',nombre:'Constitución Nacional',subtitulo:'Argentina',badge:'📗',badge_bg:'#ECFDF5',edicion:'Edición 2024 · Formato bolsillo',desc:'Texto completo con la reforma de 1994.',precio:3500,stock:true},
+        {id:'101',nombre:'Código Civil y Comercial',subtitulo:'de la Nación',badge:'📘',badge_bg:'#EFF6FF',edicion:'Edición 2024 · Tapa blanda',descripcion:'Indispensable para Derecho Civil, Comercial y Sucesiones.',precio:8500,stock:true},
+        {id:'102',nombre:'Código Penal',subtitulo:'de la Nación Argentina',badge:'📕',badge_bg:'#FEF2F2',edicion:'Edición 2024 · Tapa blanda',descripcion:'Texto oficial con todas las reformas vigentes.',precio:6500,stock:true},
+        {id:'103',nombre:'Constitución Nacional',subtitulo:'Argentina',badge:'📗',badge_bg:'#ECFDF5',edicion:'Edición 2024 · Formato bolsillo',descripcion:'Texto completo con la reforma de 1994.',precio:3500,stock:true},
       ]); total += 3;
     }
     if (total > 0) {
@@ -1279,9 +1279,9 @@ async function seedDatos() { if (window._seedSupabase) { await window._seedSupab
   ];
 
   const SEED_CODIGOS = [
-    { id:'101', nombre:'Código Civil y Comercial', subtitulo:'de la Nación',        badge:'📘', badgeBg:'#EFF6FF', edicion:'Edición 2024 · Tapa blanda',    desc:'Indispensable para Derecho Civil, Comercial y Sucesiones.', precio:8500, stock:true },
-    { id:'102', nombre:'Código Penal',             subtitulo:'de la Nación Argentina', badge:'📕', badgeBg:'#FEF2F2', edicion:'Edición 2024 · Tapa blanda', desc:'Texto oficial con todas las reformas vigentes.',           precio:6500, stock:true },
-    { id:'103', nombre:'Constitución Nacional',    subtitulo:'Argentina',           badge:'📗', badgeBg:'#ECFDF5', edicion:'Edición 2024 · Formato bolsillo', desc:'Texto completo con la reforma de 1994.',                  precio:3500, stock:true },
+    { id:'101', nombre:'Código Civil y Comercial', subtitulo:'de la Nación',        badge:'📘', badgeBg:'#EFF6FF', edicion:'Edición 2024 · Tapa blanda',    descripcion:'Indispensable para Derecho Civil, Comercial y Sucesiones.', precio:8500, stock:true },
+    { id:'102', nombre:'Código Penal',             subtitulo:'de la Nación Argentina', badge:'📕', badgeBg:'#FEF2F2', edicion:'Edición 2024 · Tapa blanda', descripcion:'Texto oficial con todas las reformas vigentes.',           precio:6500, stock:true },
+    { id:'103', nombre:'Constitución Nacional',    subtitulo:'Argentina',           badge:'📗', badgeBg:'#ECFDF5', edicion:'Edición 2024 · Formato bolsillo', descripcion:'Texto completo con la reforma de 1994.',                  precio:3500, stock:true },
   ];
 
   try {
