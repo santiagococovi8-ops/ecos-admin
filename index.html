@@ -710,39 +710,46 @@ window._seedSupabase = async () => {
 
 // ── LISTENERS tiempo real ──
 function iniciarListeners() {
-  const reload = (tabla, campo) => SB.select(tabla, 'order=id.asc').then(rows => {
-    if (tabla === 'noticias') {
+  const reloadTabla = {
+    noticias: () => SB.select('noticias', 'order=orden.asc').then(rows => {
       DATA.noticias = rows.map(r => ({...r, catBg:r.cat_bg||r.catBg, catTxt:r.cat_txt||r.catTxt, heroBg:r.hero_bg||r.heroBg, imgUrl:r.img_url||r.imgUrl||'', enCarrusel:r.en_carrusel!==undefined?r.en_carrusel:r.enCarrusel}));
       DATA.noticias.sort((a,b)=>(a.orden||0)-(b.orden||0));
       if (['noticias','dashboard'].includes(currentPanel)) { renderNoticias(); initDashboard(); }
-    }
-    if (tabla === 'apuntes') {
+    }).catch(e => console.warn('Error cargando noticias:', e.message)),
+
+    apuntes: () => SB.select('apuntes', 'order=id.asc').then(rows => {
       DATA.apuntes = rows.map(r => ({...r, año:r.anio||r.año}));
       if (['apuntes','dashboard'].includes(currentPanel)) { renderApuntes(); initDashboard(); }
-    }
-    if (tabla === 'codigos') {
-      DATA.codigos = rows.map(r => ({...r, badgeBg:r.badge_bg||r.badgeBg}));
+    }).catch(e => console.warn('Error cargando apuntes:', e.message)),
+
+    codigos: () => SB.select('codigos', 'order=id.asc').then(rows => {
+      DATA.codigos = rows.map(r => ({...r, badgeBg:r.badge_bg||r.badgeBg, descripcion:r.descripcion||r.desc||''}));
       if (currentPanel === 'codigos') renderCodigos();
-    }
-    if (tabla === 'usuarios') {
+    }).catch(e => console.warn('Error cargando codigos:', e.message)),
+
+    usuarios: () => SB.select('usuarios', 'order=id.asc').then(rows => {
       DATA.usuarios = rows;
       if (['usuarios','dashboard'].includes(currentPanel)) { renderUsuarios(); initDashboard(); }
-    }
-    if (tabla === 'pedidos') {
+    }).catch(e => console.warn('Error cargando usuarios:', e.message)),
+
+    pedidos: () => SB.select('pedidos', 'order=id.asc').then(rows => {
       DATA.pedidos = rows;
       if (currentPanel === 'pedidos') renderPedidos();
-    }
-  }).catch(e => console.warn('Error cargando ' + tabla + ':', e.message));
+    }).catch(e => console.warn('Error cargando pedidos:', e.message)),
+  };
 
-  // Carga inicial
-  reload('noticias'); reload('apuntes'); reload('codigos'); reload('usuarios'); reload('pedidos');
+  // Exponer para que eliminar() pueda recargar
+  window._reloadTabla = reloadTabla;
+
+  // Carga inicial de todas las tablas
+  Object.values(reloadTabla).forEach(fn => fn());
 
   // Realtime
-  SB.subscribe('noticias',  () => reload('noticias'));
-  SB.subscribe('apuntes',   () => reload('apuntes'));
-  SB.subscribe('codigos',   () => reload('codigos'));
-  SB.subscribe('usuarios',  () => reload('usuarios'));
-  SB.subscribe('pedidos',   () => reload('pedidos'));
+  SB.subscribe('noticias', () => reloadTabla.noticias());
+  SB.subscribe('apuntes',  () => reloadTabla.apuntes());
+  SB.subscribe('codigos',  () => reloadTabla.codigos());
+  SB.subscribe('usuarios', () => reloadTabla.usuarios());
+  SB.subscribe('pedidos',  () => reloadTabla.pedidos());
 
   initDashboard();
   toast('Supabase conectado ✓', 'ok');
@@ -822,6 +829,15 @@ function goPanel(name) {
   const titles = { dashboard:'Dashboard', noticias:'Noticias', apuntes:'Apuntes', codigos:'ECódigos', usuarios:'Usuarios', pedidos:'Pedidos', config:'Configuración' };
   document.getElementById('top-title').textContent = titles[name] || name;
   currentPanel = name;
+  // Recargar datos frescos al cambiar de panel
+  if (window._reloadTabla) {
+    if (name === 'codigos')  window._reloadTabla.codigos();
+    if (name === 'apuntes')  window._reloadTabla.apuntes();
+    if (name === 'noticias') window._reloadTabla.noticias();
+    if (name === 'usuarios') window._reloadTabla.usuarios();
+    if (name === 'pedidos')  window._reloadTabla.pedidos();
+    if (name === 'dashboard') Object.values(window._reloadTabla).forEach(fn => fn());
+  }
 }
 
 // ── Dashboard ──
@@ -910,6 +926,7 @@ function renderCodigos() {
         <td>${c.stock ? '<span class="badge badge-green">En stock</span>' : '<span class="badge badge-red">Agotado</span>'}</td>
         <td class="td-actions">
           <button class="btn-secondary btn-sm" onclick="editarItem('codigo','${c.id}')">Editar</button>
+          <button class="btn-danger btn-sm" onclick="eliminar('codigos','${c.id}')">Eliminar</button>
         </td>
       </tr>`).join('');
 }
@@ -1198,13 +1215,15 @@ async function guardarModal() {
 // ── Eliminar ──
 async function eliminar(col, id) {
   if (!confirm('¿Seguro que querés eliminar este elemento?')) return;
-  if (window._fbEliminar) {
+  try {
     await window._fbEliminar(col, String(id));
-  } else {
-    DATA[col] = DATA[col].filter(x => String(x.id) !== String(id));
-    renderAll();
+    // Recargar la tabla inmediatamente sin esperar realtime
+    const tablaMap = { noticias:'noticias', apuntes:'apuntes', codigos:'codigos', usuarios:'usuarios', pedidos:'pedidos' };
+    if (window._reloadTabla && tablaMap[col]) await window._reloadTabla[col]();
+    toast('Eliminado ✓', 'ok');
+  } catch(e) {
+    toast('Error al eliminar: ' + e.message, 'err');
   }
-  toast('Eliminado','ok');
 }
 
 // ── Estado pedido ──
