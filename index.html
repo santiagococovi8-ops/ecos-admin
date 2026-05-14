@@ -1099,12 +1099,12 @@ async function guardarModal() {
 
     if (modalType === 'noticia') {
       let imgUrl = document.getElementById('mf-imgurl').value;
-      // Si es base64 nueva → subir a Storage
-    if (imgUrl.startsWith('data:') && window._fbSubirImagen) {
+      // Si es base64 nueva → subir a Storage con nombre único por noticia
+      if (imgUrl.startsWith('data:') && window._fbSubirImagen) {
         btn.textContent = 'Subiendo imagen...';
         toast('Subiendo imagen a Supabase Storage...', '');
-        // Timeout de 30 segundos
-        const uploadPromise = window._fbSubirImagen(imgUrl, 'noticia');
+        const imgId = editId !== null ? String(editId) : String(Date.now()).slice(-6);
+        const uploadPromise = window._fbSubirImagen(imgUrl, 'noticia-' + imgId);
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Tiempo de espera agotado. Intentá con una imagen más pequeña.')), 30000)
         );
@@ -1155,11 +1155,29 @@ async function guardarModal() {
       col = 'codigos';
     }
 
-    const id = editId !== null ? String(editId) : String(Date.now());
+    // ID: si es edición usar el existente; si es nuevo usar un string corto legible
+    const id = editId !== null ? String(editId) : String(Date.now()).slice(-6);
     obj.id = id;
 
     if (window._fbGuardar) {
       await window._fbGuardar(col, id, obj);
+      // Forzar recarga inmediata de la tabla (no esperar realtime)
+      const reloadMap = {
+        noticias: () => SB.select('noticias','order=orden.asc').then(rows => {
+          DATA.noticias = rows.map(r => ({...r, catBg:r.cat_bg||r.catBg, catTxt:r.cat_txt||r.catTxt, heroBg:r.hero_bg||r.heroBg, imgUrl:r.img_url||r.imgUrl||'', enCarrusel:r.en_carrusel!==undefined?r.en_carrusel:r.enCarrusel}));
+          DATA.noticias.sort((a,b)=>(a.orden||0)-(b.orden||0));
+          renderNoticias(); initDashboard();
+        }),
+        apuntes: () => SB.select('apuntes','order=id.asc').then(rows => {
+          DATA.apuntes = rows.map(r => ({...r, año:r.anio||r.año}));
+          renderApuntes(); initDashboard();
+        }),
+        codigos: () => SB.select('codigos','order=id.asc').then(rows => {
+          DATA.codigos = rows.map(r => ({...r, badgeBg:r.badge_bg||r.badgeBg}));
+          renderCodigos();
+        }),
+      };
+      if (reloadMap[col]) await reloadMap[col]();
     } else {
       // Fallback sin Supabase
       const arr = DATA[col];
