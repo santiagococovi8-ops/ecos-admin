@@ -406,27 +406,20 @@ tr:hover td{background:var(--gray-50);}
               <label class="f-lbl">Título *</label>
               <input type="text" class="f-input" id="notif-titulo" placeholder="Ej: Nuevo apunte disponible" maxlength="80">
             </div>
-            <div class="f-field" style="margin-bottom:12px;">
+            <div class="f-field" style="margin-bottom:16px;">
               <label class="f-lbl">Mensaje *</label>
               <textarea class="f-input" id="notif-mensaje" rows="3" placeholder="Ej: Ya está disponible el apunte de Derecho Civil I." style="resize:vertical;min-height:72px;"></textarea>
-            </div>
-            <div class="f-field" style="margin-bottom:16px;">
-              <label class="f-lbl">URL al tocar (opcional)</label>
-              <input type="text" class="f-input" id="notif-url" placeholder="https://ecos-phi-nine.vercel.app" value="https://ecos-phi-nine.vercel.app">
             </div>
             <div style="display:flex;gap:10px;align-items:center;">
               <button class="btn-primary" onclick="enviarNotificacion()" id="btn-notif">
                 📤 Enviar a todos
               </button>
-              <span id="notif-status" style="font-size:12px;color:var(--gray-400);"></span>
+              <span id="notif-status" style="font-size:12px;"></span>
             </div>
           </div>
-
           <div class="config-card">
-            <div class="config-title" style="margin-bottom:14px;">📋 Historial reciente</div>
-            <div id="notif-lista" style="display:flex;flex-direction:column;gap:8px;">
-              <div style="font-size:13px;color:var(--gray-400);text-align:center;padding:20px 0;">Cargando...</div>
-            </div>
+            <div class="config-title" style="margin-bottom:14px;">📋 Historial</div>
+            <div id="notif-lista"><div style="font-size:13px;color:var(--gray-400);text-align:center;padding:20px 0;">Cargando...</div></div>
           </div>
         </div>
       </div>
@@ -882,14 +875,11 @@ function goPanel(name) {
   }
 }
 
-// ── NOTIFICACIONES PUSH (OneSignal) ──
-const ONESIGNAL_APP_ID  = '1abf72a7-51ff-49c2-a913-f90da792dd08';
-const ONESIGNAL_API_KEY = 'os_v2_app_dk7xfj2r75e4fkit7eg2pew5badtyltihklemamyglnju7dd6tkauly753kjimhfhnkpxm3cbwqt5v7zlafy5ogss3aq6r3alwop53a';
 
+// ── NOTIFICACIONES PUSH ──
 async function enviarNotificacion() {
   const titulo  = document.getElementById('notif-titulo').value.trim();
   const mensaje = document.getElementById('notif-mensaje').value.trim();
-  const url     = document.getElementById('notif-url').value.trim() || 'https://ecos-phi-nine.vercel.app';
   const status  = document.getElementById('notif-status');
   const btn     = document.getElementById('btn-notif');
 
@@ -899,48 +889,30 @@ async function enviarNotificacion() {
   btn.disabled = true;
   btn.textContent = 'Enviando...';
   status.textContent = '';
-  status.style.color = 'var(--gray-400)';
 
   try {
-    // 1. Enviar via OneSignal API
-    const res = await fetch('https://onesignal.com/api/v1/notifications', {
+    const res = await fetch('/api/send-notification', {
       method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': 'Key ' + ONESIGNAL_API_KEY,
-      },
-      body: JSON.stringify({
-        app_id:             ONESIGNAL_APP_ID,
-        included_segments:  ['All'],
-        headings:           { en: titulo },
-        contents:           { en: mensaje },
-        url:                url,
-        web_push_topic:     'ecos-notif',
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titulo, mensaje }),
     });
 
     const data = await res.json();
 
-    if (!res.ok || data.errors) {
-      throw new Error(data.errors ? data.errors.join(', ') : 'Error ' + res.status);
-    }
+    if (!res.ok) throw new Error(data.error || 'Error al enviar');
 
-    // 2. Guardar en historial de Supabase
-    const tipoEmoji = '🔔';
+    // Guardar en historial Supabase
     await SB.authUpsert('notificaciones', [{
       titulo,
       mensaje,
       tipo: 'push',
-      emoji: tipoEmoji,
+      emoji: '🔔',
       fecha: new Date().toISOString(),
-      fecha_display: new Date().toLocaleDateString('es-AR', {
-        day: '2-digit', month: '2-digit', year: 'numeric',
-        hour: '2-digit', minute: '2-digit'
-      }),
+      fecha_display: new Date().toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }),
       activa: true,
       onesignal_id: data.id || null,
       recipients: data.recipients || 0,
-    }]).catch(e => console.warn('No se pudo guardar historial:', e.message));
+    }]).catch(() => {});
 
     document.getElementById('notif-titulo').value  = '';
     document.getElementById('notif-mensaje').value = '';
@@ -950,7 +922,7 @@ async function enviarNotificacion() {
 
   } catch(e) {
     status.style.color = '#EF4444';
-    status.textContent = '✗ Error: ' + (e.message || 'No se pudo enviar');
+    status.textContent = '✗ ' + (e.message || 'Error desconocido');
   } finally {
     btn.disabled = false;
     btn.textContent = '📤 Enviar a todos';
@@ -961,7 +933,7 @@ async function enviarNotificacion() {
 async function cargarHistorialNotif() {
   const lista = document.getElementById('notif-lista');
   if (!lista) return;
-  lista.innerHTML = '<div style="font-size:13px;color:var(--gray-400);text-align:center;padding:20px 0;">Cargando...</div>';
+  lista.innerHTML = '<div style="font-size:13px;color:var(--gray-400);text-align:center;padding:16px;">Cargando...</div>';
   try {
     const rows = await SB.select('notificaciones', 'order=fecha.desc&limit=20');
     if (!rows || rows.length === 0) {
@@ -969,29 +941,25 @@ async function cargarHistorialNotif() {
       return;
     }
     lista.innerHTML = rows.map(n => `
-      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px;background:var(--gray-50);border-radius:10px;border:1px solid var(--gray-100);">
-        <div style="font-size:20px;flex-shrink:0;margin-top:2px;">${n.emoji || '🔔'}</div>
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px;background:var(--gray-50);border-radius:10px;border:1px solid var(--gray-100);margin-bottom:8px;">
+        <div style="font-size:20px;flex-shrink:0;">🔔</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:13px;font-weight:700;color:var(--gray-900);margin-bottom:2px;">${n.titulo}</div>
           <div style="font-size:12px;color:var(--gray-600);line-height:1.5;margin-bottom:4px;">${n.mensaje}</div>
-          <div style="font-size:11px;color:var(--gray-400);">${n.fecha_display || ''} ${n.recipients ? '· ' + n.recipients + ' dispositivos' : ''}</div>
+          <div style="font-size:11px;color:var(--gray-400);">${n.fecha_display || ''} ${n.recipients ? '· ' + n.recipients + ' dispositivo(s)' : ''}</div>
         </div>
-        <button onclick="eliminarNotifHistorial('${n.id}')" style="background:none;border:none;color:var(--gray-300);cursor:pointer;font-size:18px;padding:2px 6px;flex-shrink:0;" title="Eliminar del historial">×</button>
+        <button onclick="eliminarNotif('${n.id}')" style="background:none;border:none;color:var(--gray-300);cursor:pointer;font-size:18px;padding:2px 6px;flex-shrink:0;">×</button>
       </div>
     `).join('');
   } catch(e) {
-    lista.innerHTML = '<div style="font-size:13px;color:#EF4444;text-align:center;padding:16px;">Error: ' + (e.message || '') + '</div>';
+    lista.innerHTML = '<div style="font-size:13px;color:#EF4444;padding:12px;">Error: ' + (e.message||'') + '</div>';
   }
 }
 
-async function eliminarNotifHistorial(id) {
+async function eliminarNotif(id) {
   if (!confirm('¿Eliminar del historial?')) return;
-  try {
-    await SB.remove('notificaciones', id);
-    await cargarHistorialNotif();
-  } catch(e) {
-    alert('Error: ' + (e.message || ''));
-  }
+  try { await SB.remove('notificaciones', id); await cargarHistorialNotif(); }
+  catch(e) { alert('Error: ' + e.message); }
 }
 
 // ── Dashboard ──
