@@ -236,6 +236,11 @@ tr:hover td{background:var(--gray-50);}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
         <span>Pedidos</span>
       </div>
+      <div class="sb-section">Comunicación</div>
+      <div class="sb-item" onclick="goPanel('notificaciones')" id="sb-notificaciones">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span>Notificaciones</span>
+      </div>
       <div class="sb-section">Sistema</div>
       <div class="sb-item" onclick="goPanel('config')" id="sb-config">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M4.93 19.07l1.41-1.41M19.07 19.07l-1.41-1.41"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
@@ -373,6 +378,29 @@ tr:hover td{background:var(--gray-50);}
 
           <!-- SEED -->
           <div class="config-card" style="grid-column:1/-1;">
+            <div class="config-title">🔔 Tabla Notificaciones (una vez)</div>
+            <p style="font-size:13px;color:var(--gray-600);line-height:1.6;margin-bottom:10px;">
+              Para usar el panel de notificaciones, ejecutá este SQL en Supabase → SQL Editor:
+            </p>
+            <pre style="font-size:11px;background:#0F172A;color:#7DD3FC;padding:12px;border-radius:8px;overflow-x:auto;margin-bottom:16px;line-height:1.5;">create table if not exists notificaciones (
+  id uuid default gen_random_uuid() primary key,
+  titulo text not null,
+  mensaje text not null,
+  tipo text default 'info',
+  emoji text default '🔔',
+  fecha timestamptz default now(),
+  fecha_display text,
+  activa boolean default true
+);
+alter table notificaciones enable row level security;
+create policy "Anon can read notificaciones"
+  on notificaciones for select using (true);
+create policy "Auth can insert notificaciones"
+  on notificaciones for insert with check (auth.role() = 'authenticated');
+create policy "Auth can delete notificaciones"
+  on notificaciones for delete using (auth.role() = 'authenticated');</pre>
+          </div>
+          <div class="config-card" style="grid-column:1/-1;">
             <div class="config-title">🗄️ Datos iniciales</div>
             <p style="font-size:13px;color:var(--gray-600);line-height:1.6;margin-bottom:16px;">
               Si Supabase está vacío, usá este botón para cargar todos los datos iniciales de la app
@@ -387,6 +415,47 @@ tr:hover td{background:var(--gray-50);}
             </div>
           </div>
 
+        </div>
+      </div>
+
+      <div class="panel" id="panel-notificaciones">
+        <div style="max-width:680px;">
+          <div class="config-card" style="margin-bottom:16px;">
+            <div class="config-title">🔔 Enviar notificación push</div>
+            <p style="font-size:13px;color:var(--gray-600);line-height:1.6;margin-bottom:16px;">
+              Las notificaciones aparecen en la app de todos los usuarios registrados. Usalas para comunicar eventos, apuntes nuevos o urgencias.
+            </p>
+            <div class="f-field" style="margin-bottom:12px;">
+              <label class="f-lbl">Título *</label>
+              <input type="text" class="f-input" id="notif-titulo" placeholder="Ej: Nuevo apunte disponible" maxlength="80">
+            </div>
+            <div class="f-field" style="margin-bottom:12px;">
+              <label class="f-lbl">Mensaje *</label>
+              <textarea class="f-input" id="notif-mensaje" rows="3" placeholder="Ej: Ya está disponible el apunte de Derecho Civil I. Pedilo desde la app." style="resize:vertical;min-height:72px;"></textarea>
+            </div>
+            <div class="f-field" style="margin-bottom:16px;">
+              <label class="f-lbl">Tipo</label>
+              <select class="f-input" id="notif-tipo">
+                <option value="info">ℹ️ Información general</option>
+                <option value="apunte">📚 Apuntes nuevos</option>
+                <option value="evento">📅 Evento / actividad</option>
+                <option value="urgente">⚠️ Urgente</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <button class="btn-primary" onclick="enviarNotificacion()" id="btn-notif">
+                📤 Publicar notificación
+              </button>
+              <span id="notif-status" style="font-size:12px;color:var(--gray-400);"></span>
+            </div>
+          </div>
+
+          <div class="config-card">
+            <div class="config-title" style="margin-bottom:14px;">📋 Historial de notificaciones</div>
+            <div id="notif-lista" style="display:flex;flex-direction:column;gap:8px;">
+              <div style="font-size:13px;color:var(--gray-400);text-align:center;padding:20px 0;">Cargando...</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -826,7 +895,7 @@ function goPanel(name) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('sb-' + name).classList.add('active');
   document.getElementById('panel-' + name).classList.add('active');
-  const titles = { dashboard:'Dashboard', noticias:'Noticias', apuntes:'Apuntes', codigos:'ECódigos', usuarios:'Usuarios', pedidos:'Pedidos', config:'Configuración' };
+  const titles = { dashboard:'Dashboard', noticias:'Noticias', apuntes:'Apuntes', codigos:'ECódigos', usuarios:'Usuarios', pedidos:'Pedidos', notificaciones:'Notificaciones Push', config:'Configuración' };
   document.getElementById('top-title').textContent = titles[name] || name;
   currentPanel = name;
   // Recargar datos frescos al cambiar de panel
@@ -836,7 +905,87 @@ function goPanel(name) {
     if (name === 'noticias') window._reloadTabla.noticias();
     if (name === 'usuarios') window._reloadTabla.usuarios();
     if (name === 'pedidos')  window._reloadTabla.pedidos();
+    if (name === 'notificaciones') cargarNotificaciones();
     if (name === 'dashboard') Object.values(window._reloadTabla).forEach(fn => fn());
+  }
+}
+
+
+// ── NOTIFICACIONES PUSH ──
+async function enviarNotificacion() {
+  const titulo = document.getElementById('notif-titulo').value.trim();
+  const mensaje = document.getElementById('notif-mensaje').value.trim();
+  const tipo = document.getElementById('notif-tipo').value;
+  const status = document.getElementById('notif-status');
+
+  if (!titulo) { document.getElementById('notif-titulo').focus(); return; }
+  if (!mensaje) { document.getElementById('notif-mensaje').focus(); return; }
+
+  const btn = document.getElementById('btn-notif');
+  btn.disabled = true;
+  btn.textContent = 'Publicando...';
+  status.textContent = '';
+
+  const tipoEmoji = { info:'ℹ️', apunte:'📚', evento:'📅', urgente:'⚠️' }[tipo] || 'ℹ️';
+
+  try {
+    await SB.authUpsert('notificaciones', [{
+      titulo,
+      mensaje,
+      tipo,
+      emoji: tipoEmoji,
+      fecha: new Date().toISOString(),
+      fecha_display: new Date().toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }),
+      activa: true
+    }]);
+    document.getElementById('notif-titulo').value = '';
+    document.getElementById('notif-mensaje').value = '';
+    status.style.color = '#059669';
+    status.textContent = '✓ Notificación publicada correctamente';
+    await cargarNotificaciones();
+  } catch(e) {
+    status.style.color = '#EF4444';
+    status.textContent = '✗ Error: ' + (e.message || 'No se pudo publicar');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📤 Publicar notificación';
+    setTimeout(() => { status.textContent = ''; }, 5000);
+  }
+}
+
+async function cargarNotificaciones() {
+  const lista = document.getElementById('notif-lista');
+  if (!lista) return;
+  lista.innerHTML = '<div style="font-size:13px;color:var(--gray-400);text-align:center;padding:20px 0;">Cargando...</div>';
+  try {
+    const rows = await SB.select('notificaciones', 'order=fecha.desc&limit=30');
+    if (!rows || rows.length === 0) {
+      lista.innerHTML = '<div style="font-size:13px;color:var(--gray-400);text-align:center;padding:20px 0;">No hay notificaciones enviadas aún.</div>';
+      return;
+    }
+    lista.innerHTML = rows.map(n => `
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px;background:var(--gray-50);border-radius:10px;border:1px solid var(--gray-100);">
+        <div style="font-size:22px;flex-shrink:0;margin-top:2px;">${n.emoji||'🔔'}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:700;color:var(--gray-900);margin-bottom:2px;">${n.titulo}</div>
+          <div style="font-size:12px;color:var(--gray-600);line-height:1.5;margin-bottom:4px;">${n.mensaje}</div>
+          <div style="font-size:11px;color:var(--gray-400);">${n.fecha_display || new Date(n.fecha).toLocaleDateString('es-AR')}</div>
+        </div>
+        <button onclick="eliminarNotificacion('${n.id}')" style="background:none;border:none;color:var(--gray-400);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:6px;flex-shrink:0;" title="Eliminar">×</button>
+      </div>
+    `).join('');
+  } catch(e) {
+    lista.innerHTML = '<div style="font-size:13px;color:#EF4444;text-align:center;padding:20px 0;">Error al cargar: ' + (e.message||'') + '</div>';
+  }
+}
+
+async function eliminarNotificacion(id) {
+  if (!confirm('¿Eliminar esta notificación?')) return;
+  try {
+    await SB.remove('notificaciones', id);
+    await cargarNotificaciones();
+  } catch(e) {
+    alert('Error al eliminar: ' + (e.message || ''));
   }
 }
 
