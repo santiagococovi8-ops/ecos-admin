@@ -12,9 +12,13 @@ export default async function handler(req, res) {
   const ONESIGNAL_APP_ID  = '1abf72a7-51ff-49c2-a913-f90da792dd08';
   const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY;
 
+  // Debug: verificar que la key llega
   if (!ONESIGNAL_API_KEY) {
-    return res.status(500).json({ error: 'API key no configurada' });
+    return res.status(500).json({ error: 'API key no configurada en env vars' });
   }
+
+  // Debug: mostrar primeros caracteres de la key
+  const keyPreview = ONESIGNAL_API_KEY.substring(0, 10) + '...';
 
   try {
     const response = await fetch('https://onesignal.com/api/v1/notifications', {
@@ -35,12 +39,16 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (!response.ok) {
-      return res.status(500).json({ error: data.errors?.join(', ') || 'Error OneSignal' });
+      return res.status(500).json({ 
+        error: data.errors?.join(', ') || 'Error OneSignal',
+        keyPreview,
+        status: response.status,
+      });
     }
 
     return res.status(200).json({ ok: true, id: data.id, recipients: data.recipients });
 
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    return res.status(500).json({ error: e.message, keyPreview });
   }
 }
