@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // Solo POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -11,7 +10,11 @@ export default async function handler(req, res) {
   }
 
   const ONESIGNAL_APP_ID  = '1abf72a7-51ff-49c2-a913-f90da792dd08';
-  const ONESIGNAL_API_KEY = 'os_v2_app_dk7xfj2r75e4fkit7eg2pew5badtyltihklemamyglnju7dd6tkauly753kjimhfhnkpxm3cbwqt5v7zlafy5ogss3aq6r3alwop53a';
+  const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY;
+
+  if (!ONESIGNAL_API_KEY) {
+    return res.status(500).json({ error: 'API key no configurada' });
+  }
 
   try {
     const response = await fetch('https://onesignal.com/api/v1/notifications', {
