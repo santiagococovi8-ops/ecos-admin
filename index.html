@@ -423,13 +423,55 @@ tr:hover td{background:var(--gray-50);}
 
       <!-- PEDIDOS -->
       <div class="panel" id="panel-pedidos">
-        <div class="table-card">
-          <div class="table-header">
-            <div class="table-title">Pedidos recibidos</div>
-            <button class="btn-secondary" onclick="exportarCSV('pedidos')">⬇ Exportar CSV</button>
+        <!-- Barra de filtros -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+          <select id="flt-estado" onchange="renderPedidos()" style="padding:7px 12px;border:1.5px solid var(--gray-300);border-radius:8px;font-size:13px;font-family:var(--font);background:#FAFCFF;color:var(--gray-800);cursor:pointer;">
+            <option value="">Todos los estados</option>
+            <option value="pendiente">⏳ Pendiente</option>
+            <option value="en_proceso">🔄 En proceso</option>
+            <option value="listo">✅ Listo para retirar</option>
+            <option value="entregado">📦 Entregado</option>
+          </select>
+          <select id="flt-pago" onchange="renderPedidos()" style="padding:7px 12px;border:1.5px solid var(--gray-300);border-radius:8px;font-size:13px;font-family:var(--font);background:#FAFCFF;color:var(--gray-800);cursor:pointer;">
+            <option value="">Todos los pagos</option>
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+          </select>
+          <input id="flt-buscar" type="text" placeholder="Buscar alumno o materia..." oninput="renderPedidos()"
+            style="padding:7px 12px;border:1.5px solid var(--gray-300);border-radius:8px;font-size:13px;font-family:var(--font);background:#FAFCFF;flex:1;min-width:180px;">
+          <button class="btn-secondary" onclick="exportarCSVPedidos()" style="margin-left:auto;">⬇ Exportar CSV</button>
+        </div>
+        <!-- Stats rápidos -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;" id="pedidos-stats"></div>
+        <!-- Tabla -->
+        <div class="table-card" style="padding:0;overflow:hidden;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="background:#F1F5FB;">
+                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Alumno</th>
+                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em;">Legajo</th>
+                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em;">WhatsApp</th>
+                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em;">Items del pedido</th>
+                <th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em;">Total</th>
+                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em;">Pago</th>
+                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em;">Fecha</th>
+                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em;">Estado</th>
+                <th style="padding:10px 14px;"></th>
+              </tr>
+            </thead>
+            <tbody id="tb-pedidos"></tbody>
+          </table>
+          <div id="pedidos-empty" style="display:none;text-align:center;padding:40px;color:var(--gray-400);font-size:14px;">Sin pedidos registrados aún.</div>
+        </div>
+        <!-- Modal detalle pedido -->
+        <div id="modal-pedido" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;">
+          <div style="background:#FAFCFF;border-radius:16px;padding:24px;width:94%;max-width:540px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+              <span style="font-size:16px;font-weight:700;color:var(--gray-900);">Detalle del pedido</span>
+              <button onclick="document.getElementById('modal-pedido').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--gray-500);">✕</button>
+            </div>
+            <div id="modal-pedido-body"></div>
           </div>
-          <table><thead><tr><th>Nombre</th><th>WhatsApp</th><th>Items</th><th>Total</th><th>Pago</th><th>Fecha</th><th>Estado</th></tr></thead>
-          <tbody id="tb-pedidos"></tbody></table>
         </div>
       </div>
 
@@ -1202,27 +1244,196 @@ function renderUsuarios() {
 }
 
 function renderPedidos() {
-  document.getElementById('tb-pedidos').innerHTML = DATA.pedidos.length === 0
-    ? '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:24px;">Sin pedidos aún.</td></tr>'
-    : DATA.pedidos.map(p => `
-      <tr>
-        <td class="td-bold">${p.nombre||'—'}</td>
-        <td><a href="https://wa.me/${(p.wsp||'').replace(/\D/g,'')}" target="_blank" style="color:var(--green);font-size:12px;">${p.wsp||'—'}</a></td>
-        <td style="font-size:12px;">${p.items||'—'}</td>
-        <td style="font-weight:700;color:var(--blue);">$${Number(p.total||0).toLocaleString('es-AR')}</td>
-        <td>${p.pago||'—'}</td>
-        <td>${p.fecha||'—'}</td>
-        <td>
-          <select class="f-select" style="padding:4px 8px;font-size:12px;width:auto;" onchange="cambiarEstado('${p.id}',this.value)">
-            <option value="pendiente" ${p.estado==='pendiente'?'selected':''}>⏳ Pendiente</option>
-            <option value="entregado" ${p.estado==='entregado'?'selected':''}>✅ Entregado</option>
-            <option value="cancelado" ${p.estado==='cancelado'?'selected':''}>❌ Cancelado</option>
-          </select>
-        </td>
-      </tr>`).join('');
+  // Filtros
+  const fEstado  = (document.getElementById('flt-estado')?.value  || '').toLowerCase();
+  const fPago    = (document.getElementById('flt-pago')?.value    || '').toLowerCase();
+  const fBuscar  = (document.getElementById('flt-buscar')?.value  || '').toLowerCase();
+
+  let pedidos = [...(DATA.pedidos||[])].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+  if (fEstado)  pedidos = pedidos.filter(p=>(p.estado||'').toLowerCase()===fEstado);
+  if (fPago)    pedidos = pedidos.filter(p=>(p.pago||'').toLowerCase().includes(fPago));
+  if (fBuscar)  pedidos = pedidos.filter(p=>
+    (p.nombre||'').toLowerCase().includes(fBuscar) ||
+    (p.items_resumen||p.items||'').toLowerCase().includes(fBuscar) ||
+    (p.legajo||'').toLowerCase().includes(fBuscar)
+  );
+
+  // Stats rápidos
+  const all = DATA.pedidos||[];
+  const statsEl = document.getElementById('pedidos-stats');
+  if (statsEl) {
+    const pend   = all.filter(p=>p.estado==='pendiente').length;
+    const proc   = all.filter(p=>p.estado==='en_proceso').length;
+    const listo  = all.filter(p=>p.estado==='listo').length;
+    const total$ = all.reduce((s,p)=>s+(Number(p.total)||0),0);
+    statsEl.innerHTML = [
+      ['⏳ Pendientes',  pend,   '#FEF3C7','#92400E'],
+      ['🔄 En proceso',  proc,   '#DBEAFE','#1E40AF'],
+      ['✅ Listos',       listo,  '#D1FAE5','#065F46'],
+      ['💰 Facturado',   '$'+total$.toLocaleString('es-AR'), '#F3E8FF','#6B21A8'],
+    ].map(([lbl,val,bg,col])=>`
+      <div style="background:${bg};border-radius:10px;padding:8px 14px;min-width:120px;">
+        <div style="font-size:18px;font-weight:800;color:${col};">${val}</div>
+        <div style="font-size:11px;color:${col};opacity:.8;">${lbl}</div>
+      </div>`).join('');
+  }
+
+  const tb = document.getElementById('tb-pedidos');
+  const empty = document.getElementById('pedidos-empty');
+  if (!pedidos.length) {
+    tb.innerHTML = '';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  const estadoBadge = e => {
+    const map = {
+      pendiente:   ['⏳ Pendiente',   '#FEF3C7','#92400E'],
+      en_proceso:  ['🔄 En proceso',  '#DBEAFE','#1E40AF'],
+      listo:       ['✅ Listo',        '#D1FAE5','#065F46'],
+      entregado:   ['📦 Entregado',   '#F3F4F6','#374151'],
+    };
+    const [lbl,bg,col] = map[e]||['—','#F3F4F6','#374151'];
+    return `<span style="background:${bg};color:${col};padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;">${lbl}</span>`;
+  };
+
+  tb.innerHTML = pedidos.map(p => {
+    // Parsear items si viene como string JSON
+    let items = [];
+    try { items = typeof p.items === 'string' ? JSON.parse(p.items) : (p.items||[]); } catch(e) {}
+    const itemsHtml = items.length > 0
+      ? items.map(i => {
+          if (i.esCod) return `<div style="font-size:12px;color:var(--gray-700);">🎓 <b>${i.nombre}</b> x${i.qty} — <b>$${(i.subtotal||i.precio_unit*i.qty||0).toLocaleString('es-AR')}</b></div>`;
+          const rango = (i.desde&&i.hasta) ? ` hojas <b>${i.desde}→${i.hasta}</b> (${i.hojas||i.hasta-i.desde+1} hjs.)` : ` ${i.hojas||'?'} hojas`;
+          return `<div style="font-size:12px;color:var(--gray-700);">📄 <b>${i.nombre}</b>${rango} x${i.qty} — <b>$${(i.subtotal||i.precio_unit*i.qty||0).toLocaleString('es-AR')}</b></div>`;
+        }).join('')
+      : `<div style="font-size:12px;color:var(--gray-500);">${p.items_resumen||p.items||'—'}</div>`;
+
+    const fecha = p.fecha ? new Date(p.fecha).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+    const pagoLbl = (p.pago||'').includes('trans') ? '🏦 Transferencia' : '💵 Efectivo';
+
+    return `<tr style="border-top:1px solid var(--gray-100);">
+      <td style="padding:10px 14px;"><span style="font-weight:700;font-size:13px;color:var(--gray-900);">${p.nombre||'—'}</span></td>
+      <td style="padding:10px 14px;font-size:12px;color:var(--gray-500);">${p.legajo||'—'}</td>
+      <td style="padding:10px 14px;"><a href="https://wa.me/${(p.wsp||'').replace(/\D/g,'')}" target="_blank" style="color:var(--green);font-size:12px;">${p.wsp||'—'}</a></td>
+      <td style="padding:10px 14px;max-width:260px;">${itemsHtml}</td>
+      <td style="padding:10px 14px;text-align:right;font-weight:800;font-size:14px;color:var(--blue);white-space:nowrap;">$${Number(p.total||0).toLocaleString('es-AR')}</td>
+      <td style="padding:10px 14px;font-size:12px;">${pagoLbl}</td>
+      <td style="padding:10px 14px;font-size:11px;color:var(--gray-500);white-space:nowrap;">${fecha}</td>
+      <td style="padding:10px 14px;">
+        <select onchange="cambiarEstadoPedido('${p.id}',this.value)"
+          style="padding:4px 8px;border:1.5px solid var(--gray-300);border-radius:8px;font-size:11px;font-family:var(--font);background:#FAFCFF;cursor:pointer;">
+          <option value="pendiente"  ${p.estado==='pendiente' ?'selected':''}>⏳ Pendiente</option>
+          <option value="en_proceso" ${p.estado==='en_proceso'?'selected':''}>🔄 En proceso</option>
+          <option value="listo"      ${p.estado==='listo'     ?'selected':''}>✅ Listo</option>
+          <option value="entregado"  ${p.estado==='entregado' ?'selected':''}>📦 Entregado</option>
+        </select>
+      </td>
+      <td style="padding:10px 14px;">
+        <button onclick="verDetallePedido('${p.id}')"
+          style="padding:4px 10px;border:1.5px solid var(--gray-300);border-radius:7px;font-size:11px;background:#FAFCFF;cursor:pointer;color:var(--gray-700);">Ver</button>
+      </td>
+    </tr>`;
+  }).join('');
 }
 
-// ── Filtrar ──
+
+async function cambiarEstadoPedido(id, estado) {
+  try {
+    await SB._fetch('pedidos?id=eq.'+id, {
+      method: 'PATCH',
+      headers: {'Prefer':'return=minimal'},
+      body: JSON.stringify({ estado })
+    });
+    const p = (DATA.pedidos||[]).find(p=>String(p.id)===String(id));
+    if (p) p.estado = estado;
+    renderPedidos();
+    toast('Estado actualizado');
+  } catch(e) { toast('Error al actualizar','err'); }
+}
+
+function verDetallePedido(id) {
+  const p = (DATA.pedidos||[]).find(p=>String(p.id)===String(id));
+  if (!p) return;
+  let items = [];
+  try { items = typeof p.items === 'string' ? JSON.parse(p.items) : (p.items||[]); } catch(e) {}
+  const fecha = p.fecha ? new Date(p.fecha).toLocaleString('es-AR') : '—';
+  const pagoLbl = (p.pago||'').includes('trans') ? '🏦 Transferencia bancaria' : '💵 Efectivo en mesita';
+  const itemsDetalle = items.map(i => {
+    if (i.esCod) return `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #F1F5F9;">
+        <div>
+          <div style="font-size:13px;font-weight:700;">🎓 ${i.nombre}</div>
+          <div style="font-size:11px;color:#64748B;">ECódigo · cantidad: ${i.qty}</div>
+        </div>
+        <div style="font-size:14px;font-weight:800;color:var(--blue);">$${(i.subtotal||i.precio_unit*i.qty||0).toLocaleString('es-AR')}</div>
+      </div>`;
+    const rango = (i.desde&&i.hasta) ? `Hojas <b>${i.desde} a ${i.hasta}</b> · ${i.hojas||i.hasta-i.desde+1} hojas doble faz` : `${i.hojas||'?'} hojas doble faz`;
+    return `
+      <div style="padding:8px 0;border-bottom:1px solid #F1F5F9;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <div style="font-size:13px;font-weight:700;">📄 ${i.nombre}</div>
+            <div style="font-size:11px;color:#64748B;">${rango} · cantidad: ${i.qty}</div>
+            ${i.paginas?`<div style="font-size:11px;color:#94A3B8;">${i.paginas} páginas equiv.</div>`:''}
+          </div>
+          <div style="font-size:14px;font-weight:800;color:var(--blue);">$${(i.subtotal||i.precio_unit*i.qty||0).toLocaleString('es-AR')}</div>
+        </div>
+      </div>`;
+  }).join('') || '<p style="color:#94A3B8;font-size:13px;">Sin detalle de items.</p>';
+
+  document.getElementById('modal-pedido-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;background:#F8FAFC;border-radius:10px;padding:12px;">
+      <div><div style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;">Alumno</div><div style="font-size:14px;font-weight:700;">${p.nombre||'—'}</div></div>
+      <div><div style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;">Legajo</div><div style="font-size:14px;">${p.legajo||'—'}</div></div>
+      <div><div style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;">WhatsApp</div><div style="font-size:13px;"><a href="https://wa.me/${(p.wsp||'').replace(/\D/g,'')}" target="_blank" style="color:var(--green);">${p.wsp||'—'}</a></div></div>
+      <div><div style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;">Forma de pago</div><div style="font-size:13px;">${pagoLbl}</div></div>
+      <div><div style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;">Fecha</div><div style="font-size:13px;">${fecha}</div></div>
+      <div><div style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;">Estado</div>
+        <select onchange="cambiarEstadoPedido('${p.id}',this.value)"
+          style="margin-top:2px;padding:3px 7px;border:1.5px solid var(--gray-300);border-radius:7px;font-size:12px;font-family:var(--font);background:#FAFCFF;">
+          <option value="pendiente"  ${p.estado==='pendiente' ?'selected':''}>⏳ Pendiente</option>
+          <option value="en_proceso" ${p.estado==='en_proceso'?'selected':''}>🔄 En proceso</option>
+          <option value="listo"      ${p.estado==='listo'     ?'selected':''}>✅ Listo</option>
+          <option value="entregado"  ${p.estado==='entregado' ?'selected':''}>📦 Entregado</option>
+        </select>
+      </div>
+    </div>
+    ${p.nota?`<div style="background:#FFFBEB;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:13px;color:#92400E;">📝 <b>Nota:</b> ${p.nota}</div>`:''}
+    <div style="margin-bottom:16px;">${itemsDetalle}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:2px solid #E2E8F0;">
+      <span style="font-size:13px;font-weight:700;color:#475569;">Total del pedido</span>
+      <span style="font-size:20px;font-weight:800;color:var(--blue);">$${Number(p.total||0).toLocaleString('es-AR')}</span>
+    </div>`;
+  const modal = document.getElementById('modal-pedido');
+  modal.style.display = 'flex';
+}
+
+function exportarCSVPedidos() {
+  const pedidos = DATA.pedidos||[];
+  if (!pedidos.length) { toast('No hay pedidos para exportar','err'); return; }
+  const header = ['Nombre','Legajo','WhatsApp','Items','Total','Pago','Fecha','Estado','Nota'];
+  const rows = pedidos.map(p => {
+    let items = [];
+    try { items = typeof p.items==='string'?JSON.parse(p.items):(p.items||[]); } catch(e){}
+    const itemsStr = items.map(i=>i.esCod
+      ?`${i.nombre} x${i.qty}`
+      :`${i.nombre} (hjs.${i.desde||1}-${i.hasta||i.hojas||'?'}) x${i.qty}`
+    ).join(' | ') || p.items_resumen || p.items || '';
+    const fecha = p.fecha ? new Date(p.fecha).toLocaleString('es-AR') : '';
+    return [p.nombre,p.legajo,p.wsp,itemsStr,p.total,(p.pago||'').includes('trans')?'Transferencia':'Efectivo',fecha,p.estado,p.nota||'']
+      .map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',');
+  });
+  const csv = '\ufeff' + [header.join(','),...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download = 'pedidos_ecos_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  toast('CSV exportado ✓');
+}
+
+
 function filtrarTabla(tbId, q) {
   document.querySelectorAll('#'+tbId+' tr').forEach(r => {
     r.style.display = r.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
