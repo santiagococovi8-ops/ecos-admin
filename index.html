@@ -9,7 +9,7 @@
 :root{
   --blue:#2563EB;--blue-d:#1D4ED8;--blue-dp:#0F172A;
   --yellow:#F59E0B;--green:#059669;--red:#DC2626;--purple:#7C3AED;--orange:#D97706;
-  --white:#fff;--bg:#F1F5F9;
+  --white:#fff;--bg:#E8EEF5;
   --gray-50:#F8FAFC;--gray-100:#F1F5F9;--gray-200:#E2E8F0;--gray-300:#CBD5E1;
   --gray-400:#94A3B8;--gray-500:#64748B;--gray-600:#475569;--gray-700:#334155;--gray-800:#1E293B;--gray-900:#0F172A;
   --green-bg:#ECFDF5;--red-bg:#FEF2F2;
@@ -30,7 +30,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--gray-800);height:1
   transition:opacity .4s,transform .4s;
 }
 #login-screen.out{opacity:0;transform:translateY(-20px);pointer-events:none;}
-.login-box{background:white;border-radius:20px;padding:36px 32px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.login-box{background:#FAFCFF;border-radius:20px;padding:36px 32px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
 .login-logo{text-align:center;margin-bottom:24px;}
 .login-logo .sun{font-size:48px;display:block;margin-bottom:8px;}
 .login-logo h1{font-size:22px;font-weight:800;color:var(--blue-dp);}
@@ -72,7 +72,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--gray-800);height:1
 .sb-logout:hover{color:rgba(255,255,255,.8);}
 
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
-.top-bar{height:56px;background:white;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0;}
+.top-bar{height:56px;background:#FAFCFF;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0;}
 .top-title{font-size:17px;font-weight:700;color:var(--gray-900);flex:1;}
 .top-badge{font-size:11px;font-weight:700;color:var(--blue);background:#EFF6FF;padding:3px 10px;border-radius:var(--r-pill);}
 .content{flex:1;overflow-y:auto;padding:20px 24px;}
@@ -81,14 +81,14 @@ body{font-family:var(--font);background:var(--bg);color:var(--gray-800);height:1
 
 /* STATS */
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
-.stat-card{background:white;border-radius:var(--r);padding:18px;box-shadow:var(--sh);}
+.stat-card{background:#FAFCFF;border-radius:var(--r);padding:18px;box-shadow:var(--sh);}
 .stat-icon{font-size:24px;margin-bottom:8px;}
 .stat-val{font-size:28px;font-weight:800;color:var(--gray-900);}
 .stat-lbl{font-size:12px;color:var(--gray-500);margin-top:4px;}
 .stat-delta{font-size:11px;font-weight:600;margin-top:6px;color:var(--green);}
 
 .chart-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;}
-.chart-card{background:white;border-radius:var(--r);padding:18px;box-shadow:var(--sh);}
+.chart-card{background:#FAFCFF;border-radius:var(--r);padding:18px;box-shadow:var(--sh);}
 .chart-title{font-size:13px;font-weight:700;color:var(--gray-800);margin-bottom:14px;}
 .bar-chart{display:flex;flex-direction:column;gap:8px;}
 .bar-row{display:flex;align-items:center;gap:10px;}
@@ -98,7 +98,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--gray-800);height:1
 .bar-num{font-size:12px;font-weight:600;color:var(--gray-700);width:32px;text-align:right;flex-shrink:0;}
 
 /* TABLES */
-.table-card{background:white;border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:16px;}
+.table-card{background:#FAFCFF;border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:16px;}
 .table-header{padding:14px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--gray-100);flex-wrap:wrap;}
 .table-title{font-size:14px;font-weight:700;color:var(--gray-800);flex:1;}
 .search-input{border:1.5px solid var(--gray-200);border-radius:var(--r-sm);padding:7px 12px;font-size:13px;font-family:var(--font);color:var(--gray-800);outline:none;width:220px;transition:border-color .2s;}
@@ -131,7 +131,7 @@ tr:hover td{background:var(--gray-50);}
 /* MODAL */
 #modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:50;display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;}
 #modal-overlay.on{display:flex;}
-.modal{background:white;border-radius:16px;width:100%;max-width:560px;padding:24px;box-shadow:var(--sh-md);margin:auto;}
+.modal{background:#FAFCFF;border-radius:16px;width:100%;max-width:560px;padding:24px;box-shadow:var(--sh-md);margin:auto;}
 .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
 .modal-title{font-size:16px;font-weight:800;color:var(--gray-900);}
 .modal-close{background:var(--gray-100);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:18px;color:var(--gray-600);display:flex;align-items:center;justify-content:center;}
@@ -388,7 +388,7 @@ tr:hover td{background:var(--gray-50);}
               Nuevo apunte
             </button>
           </div>
-          <table><thead><tr><th>Materia</th><th>Año</th><th>Páginas</th><th>Precio</th><th>Drive</th><th>Acciones</th></tr></thead>
+          <table><thead><tr><th>Materia</th><th>Año</th><th>Páginas</th><th>Precio auto (×$10/hoja)</th><th>Drive</th><th>Acciones</th></tr></thead>
           <tbody id="tb-apuntes"></tbody></table>
         </div>
       </div>
@@ -416,7 +416,7 @@ tr:hover td{background:var(--gray-50);}
             <input class="search-input" placeholder="Buscar nombre o legajo..." oninput="filtrarTabla('tb-usuarios',this.value)">
             <button class="btn-secondary" onclick="exportarCSV('usuarios')">⬇ Exportar CSV</button>
           </div>
-          <table><thead><tr><th>Nombre</th><th>Legajo</th><th>Año</th><th>WhatsApp</th><th>Registro</th><th></th></tr></thead>
+          <table><thead><tr><th>Nombre</th><th>Legajo</th><th>Email</th><th>WhatsApp</th><th>Verificado</th><th>Registro</th><th></th></tr></thead>
           <tbody id="tb-usuarios"></tbody></table>
         </div>
       </div>
@@ -1092,6 +1092,10 @@ async function eliminarNotif(id) {
 // ── Dashboard ──
 function initDashboard() {
   document.getElementById('st-usuarios').textContent = DATA.usuarios.length;
+  const _pendV = DATA.usuarios.filter(u => !u.verificado && u.email && !u.email.includes('ecoslegajo')).length;
+  const _dv = document.getElementById('st-u-d');
+  if (_dv) _dv.textContent = _pendV > 0 ? '⚠ ' + _pendV + ' sin verificar' : '✅ Todos verificados';
+  if (_dv) _dv.style.color = _pendV > 0 ? 'var(--orange)' : 'var(--green)';
   document.getElementById('st-noticias').textContent = DATA.noticias.length;
   document.getElementById('st-apuntes').textContent  = DATA.apuntes.length;
   document.getElementById('st-pedidos').textContent  = DATA.pedidos.filter(p => p.estado === 'pendiente').length;
@@ -1155,7 +1159,7 @@ function renderApuntes() {
         <td class="td-bold">${a.materia||'—'}</td>
         <td><span class="badge badge-blue">${a.año||'—'}</span></td>
         <td>${a.paginas||'—'} págs.</td>
-        <td style="font-weight:700;color:var(--blue);">$${Number(a.precio||0).toLocaleString('es-AR')}</td>
+        <td style="font-weight:700;color:var(--blue);">${(()=>{const h=Math.ceil((Number(a.paginas)||1)/2);return '$'+(h*10).toLocaleString('es-AR')+' ('+h+' hjs.)';})()}</td>
         <td><a href="${a.drive||'#'}" target="_blank" style="color:var(--blue);font-size:12px;">Ver →</a></td>
         <td class="td-actions">
           <button class="btn-secondary btn-sm" onclick="editarItem('apunte','${a.id}')">Editar</button>
@@ -1182,13 +1186,16 @@ function renderCodigos() {
 
 function renderUsuarios() {
   document.getElementById('tb-usuarios').innerHTML = DATA.usuarios.length === 0
-    ? '<tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:24px;">Sin usuarios registrados aún.</td></tr>'
+    ? '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:24px;">Sin usuarios registrados aún.</td></tr>'
     : DATA.usuarios.map(u => `
       <tr>
         <td class="td-bold">${u.nombre||'—'}</td>
         <td>${u.legajo||'—'}</td>
-        <td><span class="badge badge-blue">${u.año||'—'}</span></td>
-        <td><a href="https://wa.me/${(u.wsp||'').replace(/\D/g,'')}" target="_blank" style="color:var(--green);font-size:12px;">${u.wsp||'—'}</a></td>
+        <td style="font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+          ${u.email ? '<a href="mailto:'+u.email+'" style="color:var(--blue);">'+u.email+'</a>' : '<span style="color:var(--gray-400);">—</span>'}
+        </td>
+        <td><a href="https://wa.me/${(u.wsp||'').replace(/[^0-9]/g,'')}" target="_blank" style="color:var(--green);font-size:12px;">${u.wsp||'—'}</a></td>
+        <td>${u.verificado ? '<span class="badge badge-green">✅ Verificado</span>' : '<span class="badge badge-yellow">⏳ Pendiente</span>'}</td>
         <td>${u.fecha||'—'}</td>
         <td><button class="btn-danger btn-sm" onclick="eliminar('usuarios','${u.id}')">Eliminar</button></td>
       </tr>`).join('');
@@ -1268,7 +1275,13 @@ const FORMS = {
         <select class="f-select" id="mf-año">${['1° año','2° año','3° año','4° año','5° año'].map(a=>`<option ${d.año===a?'selected':''}>${a}</option>`).join('')}</select>
       </div>
       <div class="f-field"><label class="f-lbl">Páginas</label><input type="number" class="f-input" id="mf-paginas" value="${d.paginas||''}" placeholder="180"></div>
-      <div class="f-field"><label class="f-lbl">Precio ($) *</label><input type="number" class="f-input" id="mf-precio" value="${d.precio||''}" placeholder="1200"></div>
+      <div class="f-field">
+        <label class="f-lbl">Precio (calculado automático)</label>
+        <div style="background:#EFF6FF;border-radius:8px;padding:9px 13px;font-size:12px;color:#1E40AF;line-height:1.5;">
+          💡 <strong>$10 × hojas doble faz</strong> · Con ${d.paginas||0} págs. = ${Math.ceil((Number(d.paginas)||1)/2)} hojas = <strong>$${Math.ceil((Number(d.paginas)||1)/2)*10}</strong>
+        </div>
+        <input type="hidden" id="mf-precio" value="${Math.ceil((Number(d.paginas)||1)/2)*10}">
+      </div>
       <div class="f-field span2"><label class="f-lbl">Link de Google Drive</label><input class="f-input" id="mf-drive" value="${d.drive||''}" placeholder="https://drive.google.com/..."></div>
     </div>`,
 
@@ -1403,10 +1416,11 @@ async function guardarModal() {
         materia: document.getElementById('mf-materia').value.trim(),
         año:     document.getElementById('mf-año').value,
         paginas: parseInt(document.getElementById('mf-paginas').value)||0,
-        precio:  parseInt(document.getElementById('mf-precio').value)||0,
+        precio:  Math.ceil((parseInt(document.getElementById('mf-paginas').value)||1)/2)*10,
         drive:   document.getElementById('mf-drive').value.trim(),
       };
-      if (!obj.materia || !obj.precio) { toast('Materia y precio son obligatorios','err'); btn.disabled=false; btn.textContent='Guardar'; return; }
+      obj.precio = Math.ceil((obj.paginas||1)/2)*10; // Precio automático
+      if (!obj.materia) { toast('La materia es obligatoria','err'); btn.disabled=false; btn.textContent='Guardar'; return; }
       col = 'apuntes';
 
     } else if (modalType === 'codigo') {
