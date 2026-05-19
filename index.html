@@ -606,6 +606,16 @@ tr:hover td{background:var(--gray-50);}
 
 <!-- ── FIREBASE (module) ── -->
 <script>
+// ═══════════════════════════════════════════════
+// ECOS Admin Security Utilities
+// ═══════════════════════════════════════════════
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+</script>
+<script>
 // ── SUPABASE CONFIG ──
 const SUPABASE_URL  = 'https://xeqdmhufudoabafqlpku.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhlcWRtaHVmdWRvYWJhZnFscGt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NzIzOTcsImV4cCI6MjA5NDI0ODM5N30.vmpRyI-I6BKAbixH1RQ6nnig42B3FDlupLW2v-P2i7I';
@@ -778,12 +788,15 @@ const SB = {
       ws.onmessage = (e) => {
         try { const msg = JSON.parse(e.data); if (msg.event === 'postgres_changes') callback(msg.payload); } catch {}
       };
-      ws.onclose = () => { clearInterval(hb); setTimeout(connect, 3000); };
+      ws.onclose = () => { clearInterval(hb); if (active) setTimeout(connect, 3000); };
     };
+    let active = true;
     connect();
+    return function unsubscribe() { active=false; clearInterval(hb); if(ws&&ws.readyState===WebSocket.OPEN)ws.close(); };
   },
 };
 window._sb = SB;
+window._sbUnsubscribers = [];
 </script>
 <script>
 // ── SUPABASE AUTH ──
@@ -801,6 +814,10 @@ window._sbLogin = async (email, pass) => {
 };
 
 window._sbLogout = () => {
+  if (Array.isArray(window._sbUnsubscribers)) {
+    window._sbUnsubscribers.forEach(fn=>{try{fn();}catch(e){}});
+    window._sbUnsubscribers=[];
+  }
   SB.logout();
   window.location.reload();
 };
@@ -1113,8 +1130,8 @@ async function cargarHistorialNotif() {
       <div style="display:flex;align-items:flex-start;gap:12px;padding:12px;background:var(--gray-50);border-radius:10px;border:1px solid var(--gray-100);margin-bottom:8px;">
         <div style="font-size:20px;flex-shrink:0;">🔔</div>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:700;color:var(--gray-900);margin-bottom:2px;">${n.titulo}</div>
-          <div style="font-size:12px;color:var(--gray-600);line-height:1.5;margin-bottom:4px;">${n.mensaje}</div>
+          <div style="font-size:13px;font-weight:700;color:var(--gray-900);margin-bottom:2px;">${esc(n.titulo)}</div>
+          <div style="font-size:12px;color:var(--gray-600);line-height:1.5;margin-bottom:4px;">${esc(n.mensaje)}</div>
           <div style="font-size:11px;color:var(--gray-400);">${n.fecha_display || ''} ${n.recipients ? '· ' + n.recipients + ' dispositivo(s)' : ''}</div>
         </div>
         <button onclick="eliminarNotif('${n.id}')" style="background:none;border:none;color:var(--gray-300);cursor:pointer;font-size:18px;padding:2px 6px;flex-shrink:0;">×</button>
@@ -1162,7 +1179,7 @@ function initDashboard() {
 
   // Últimos registros
   document.getElementById('tb-recientes').innerHTML = DATA.usuarios.slice(-5).reverse().map(u =>
-    `<tr><td class="td-bold">${u.nombre||'—'}</td><td>${u.legajo||'—'}</td><td><span class="badge badge-blue">${u.año||'—'}</span></td><td>${u.fecha||'—'}</td><td><span class="badge badge-green">Activo</span></td></tr>`
+    `<tr><td class="td-bold">${esc(u.nombre)||'—'}</td><td>${esc(u.legajo)||'—'}</td><td><span class="badge badge-blue">${u.año||'—'}</span></td><td>${u.fecha||'—'}</td><td><span class="badge badge-green">Activo</span></td></tr>`
   ).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:24px;">Sin registros aún</td></tr>';
 }
 
@@ -1180,10 +1197,10 @@ function renderNoticias() {
             <div style="width:44px;height:30px;border-radius:6px;flex-shrink:0;overflow:hidden;background:${n.heroBg||'#1E293B'};">
               ${n.imgUrl ? `<img src="${n.imgUrl}" style="width:100%;height:100%;object-fit:cover;">` : ''}
             </div>
-            <span class="td-bold">${n.titulo}</span>
+            <span class="td-bold">${esc(n.titulo)}</span>
           </div>
         </td>
-        <td><span class="badge ${cats[n.cat]||'badge-gray'}">${n.cat||'—'}</span></td>
+        <td><span class="badge ${cats[esc(n.cat)]||'badge-gray'}">${esc(n.cat)||'—'}</span></td>
         <td>${n.fecha||'—'}</td>
         <td>${n.enCarrusel ? '<span class="badge badge-green">✓ Sí</span>' : '<span class="badge badge-gray">No</span>'}</td>
         <td class="td-actions">
@@ -1198,7 +1215,7 @@ function renderApuntes() {
     ? '<tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:24px;">Sin apuntes. Agregá el primero.</td></tr>'
     : DATA.apuntes.map(a => `
       <tr>
-        <td class="td-bold">${a.materia||'—'}</td>
+        <td class="td-bold">${esc(a.materia)||'—'}</td>
         <td><span class="badge badge-blue">${a.año||'—'}</span></td>
         <td>${a.paginas||'—'} págs.</td>
         <td style="font-weight:700;color:var(--blue);">${(()=>{const h=Math.ceil((Number(a.paginas)||1)/2);return '$'+(h*10).toLocaleString('es-AR')+' ('+h+' hjs.)';})()}</td>
@@ -1215,7 +1232,7 @@ function renderCodigos() {
     ? '<tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:24px;">Sin códigos cargados.</td></tr>'
     : DATA.codigos.map(c => `
       <tr>
-        <td class="td-bold">${c.nombre||'—'} <span style="font-weight:400;color:var(--gray-400);">${c.subtitulo||''}</span></td>
+        <td class="td-bold">${esc(c.nombre)||'—'} <span style="font-weight:400;color:var(--gray-400);">${esc(c.subtitulo)}</span></td>
         <td>${c.edicion||'—'}</td>
         <td style="font-weight:700;color:var(--blue);">$${Number(c.precio||0).toLocaleString('es-AR')}</td>
         <td>${c.stock ? '<span class="badge badge-green">En stock</span>' : '<span class="badge badge-red">Agotado</span>'}</td>
@@ -1231,8 +1248,8 @@ function renderUsuarios() {
     ? '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:24px;">Sin usuarios registrados aún.</td></tr>'
     : DATA.usuarios.map(u => `
       <tr>
-        <td class="td-bold">${u.nombre||'—'}</td>
-        <td>${u.legajo||'—'}</td>
+        <td class="td-bold">${esc(u.nombre)||'—'}</td>
+        <td>${esc(u.legajo)||'—'}</td>
         <td style="font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
           ${u.email ? '<a href="mailto:'+u.email+'" style="color:var(--blue);">'+u.email+'</a>' : '<span style="color:var(--gray-400);">—</span>'}
         </td>
@@ -1314,8 +1331,8 @@ function renderPedidos() {
     const pagoLbl = (p.pago||'').includes('trans') ? '🏦 Transferencia' : '💵 Efectivo';
 
     return `<tr style="border-top:1px solid var(--gray-100);">
-      <td style="padding:10px 14px;"><span style="font-weight:700;font-size:13px;color:var(--gray-900);">${p.nombre||'—'}</span></td>
-      <td style="padding:10px 14px;font-size:12px;color:var(--gray-500);">${p.legajo||'—'}</td>
+      <td style="padding:10px 14px;"><span style="font-weight:700;font-size:13px;color:var(--gray-900);">${esc(p.nombre)||'—'}</span></td>
+      <td style="padding:10px 14px;font-size:12px;color:var(--gray-500);">${esc(p.legajo)||'—'}</td>
       <td style="padding:10px 14px;"><a href="https://wa.me/${(p.wsp||'').replace(/\D/g,'')}" target="_blank" style="color:var(--green);font-size:12px;">${p.wsp||'—'}</a></td>
       <td style="padding:10px 14px;max-width:260px;">${itemsHtml}</td>
       <td style="padding:10px 14px;text-align:right;font-weight:800;font-size:14px;color:var(--blue);white-space:nowrap;">$${Number(p.total||0).toLocaleString('es-AR')}</td>
@@ -1341,7 +1358,7 @@ function renderPedidos() {
 
 async function cambiarEstadoPedido(id, estado) {
   try {
-    await SB._fetch('pedidos?id=eq.'+id, {
+    await SB.authFetch('pedidos?id=eq.'+id, {
       method: 'PATCH',
       headers: {'Prefer':'return=minimal'},
       body: JSON.stringify({ estado })
