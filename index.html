@@ -388,7 +388,7 @@ tr:hover td{background:var(--gray-50);}
               Nuevo apunte
             </button>
           </div>
-          <table><thead><tr><th>Materia</th><th>Año</th><th>Páginas</th><th>Precio auto (×$10/hoja)</th><th>Drive</th><th>Acciones</th></tr></thead>
+          <table><thead><tr><th>Materia</th><th>Año</th><th>Páginas</th><th>Precio auto (×$55/hoja)</th><th>Drive</th><th>Acciones</th></tr></thead>
           <tbody id="tb-apuntes"></tbody></table>
         </div>
       </div>
@@ -619,6 +619,7 @@ function esc(s) {
 // ── SUPABASE CONFIG ──
 const SUPABASE_URL  = 'https://xeqdmhufudoabafqlpku.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhlcWRtaHVmdWRvYWJhZnFscGt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NzIzOTcsImV4cCI6MjA5NDI0ODM5N30.vmpRyI-I6BKAbixH1RQ6nnig42B3FDlupLW2v-P2i7I';
+const PRECIO_HOJA = 55; // $55 por hoja doble faz (sincronizado con app)
 
 const SB = {
   async _fetch(path, opts = {}) {
@@ -1218,7 +1219,7 @@ function renderApuntes() {
         <td class="td-bold">${esc(a.materia)||'—'}</td>
         <td><span class="badge badge-blue">${a.año||'—'}</span></td>
         <td>${a.paginas||'—'} págs.</td>
-        <td style="font-weight:700;color:var(--blue);">${(()=>{const h=Math.ceil((Number(a.paginas)||1)/2);return '$'+(h*10).toLocaleString('es-AR')+' ('+h+' hjs.)';})()}</td>
+        <td style="font-weight:700;color:var(--blue);">${(()=>{const h=Math.ceil((Number(a.paginas)||1)/2);return '$'+(h*PRECIO_HOJA).toLocaleString('es-AR')+' ('+h+' hjs.)';})()}</td>
         <td><a href="${a.drive||'#'}" target="_blank" style="color:var(--blue);font-size:12px;">Ver →</a></td>
         <td class="td-actions">
           <button class="btn-secondary btn-sm" onclick="editarItem('apunte','${a.id}')">Editar</button>
@@ -1367,6 +1368,26 @@ async function cambiarEstadoPedido(id, estado) {
     if (p) p.estado = estado;
     renderPedidos();
     toast('Estado actualizado');
+
+    // Notificación push automática al alumno según el nuevo estado
+    const notifPorEstado = {
+      en_proceso: { titulo: '🔄 Pedido en proceso', mensaje: 'Tu pedido está siendo preparado por ECOS.' },
+      listo:      { titulo: '✅ ¡Tu pedido está listo!', mensaje: 'Pasá a retirar tu pedido por la mesita de ECOS.' },
+      entregado:  { titulo: '📦 Pedido entregado', mensaje: 'Tu pedido fue marcado como entregado. ¡Gracias!' },
+    };
+    const notif = notifPorEstado[estado];
+    if (notif && p?.legajo) {
+      // Intentar envío push segmentado por legajo (external_id de OneSignal)
+      fetch('/api/send-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titulo:  notif.titulo,
+          mensaje: notif.mensaje,
+          legajo:  String(p.legajo), // usado como external_id en OneSignal
+        }),
+      }).catch(() => {}); // silencioso: el PATCH ya fue exitoso
+    }
   } catch(e) { toast('Error al actualizar','err'); }
 }
 
@@ -1506,9 +1527,9 @@ const FORMS = {
       <div class="f-field">
         <label class="f-lbl">Precio (calculado automático)</label>
         <div style="background:#EFF6FF;border-radius:8px;padding:9px 13px;font-size:12px;color:#1E40AF;line-height:1.5;">
-          💡 <strong>$10 × hojas doble faz</strong> · Con ${d.paginas||0} págs. = ${Math.ceil((Number(d.paginas)||1)/2)} hojas = <strong>$${Math.ceil((Number(d.paginas)||1)/2)*10}</strong>
+          💡 <strong>$${PRECIO_HOJA} × hojas doble faz</strong> · Con ${d.paginas||0} págs. = ${Math.ceil((Number(d.paginas)||1)/2)} hojas = <strong>$${Math.ceil((Number(d.paginas)||1)/2)*PRECIO_HOJA}</strong>
         </div>
-        <input type="hidden" id="mf-precio" value="${Math.ceil((Number(d.paginas)||1)/2)*10}">
+        <input type="hidden" id="mf-precio" value="${Math.ceil((Number(d.paginas)||1)/2)*PRECIO_HOJA}">
       </div>
       <div class="f-field span2"><label class="f-lbl">Link de Google Drive</label><input class="f-input" id="mf-drive" value="${d.drive||''}" placeholder="https://drive.google.com/..."></div>
     </div>`,
@@ -1644,10 +1665,10 @@ async function guardarModal() {
         materia: document.getElementById('mf-materia').value.trim(),
         año:     document.getElementById('mf-año').value,
         paginas: parseInt(document.getElementById('mf-paginas').value)||0,
-        precio:  Math.ceil((parseInt(document.getElementById('mf-paginas').value)||1)/2)*10,
+        precio:  Math.ceil((parseInt(document.getElementById('mf-paginas').value)||1)/2)*PRECIO_HOJA,
         drive:   document.getElementById('mf-drive').value.trim(),
       };
-      obj.precio = Math.ceil((obj.paginas||1)/2)*10; // Precio automático
+      obj.precio = Math.ceil((obj.paginas||1)/2)*PRECIO_HOJA; // Precio automático
       if (!obj.materia) { toast('La materia es obligatoria','err'); btn.disabled=false; btn.textContent='Guardar'; return; }
       col = 'apuntes';
 
