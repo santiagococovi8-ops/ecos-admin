@@ -1078,7 +1078,7 @@ async function enviarNotificacion() {
   status.textContent = '';
 
   try {
-    const res = await fetch('/api/send-notification', {
+    const res = await fetch('https://ecos-phi-nine.vercel.app/api/send-notification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ titulo, mensaje }),
@@ -1378,7 +1378,7 @@ async function cambiarEstadoPedido(id, estado) {
     const notif = notifPorEstado[estado];
     if (notif && p?.legajo) {
       // Intentar envío push segmentado por legajo (external_id de OneSignal)
-      fetch('/api/send-notification', {
+      fetch('https://ecos-phi-nine.vercel.app/api/send-notification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
