@@ -1,38 +1,28 @@
-// api/send-notification.js — Vercel Serverless Function
-// Notificaciones push via OneSignal REST API v1.
-// - Con `legajo` → solo ese alumno (external_id)
-// - Sin `legajo` → broadcast a todos
-
 export default async function handler(req, res) {
-  // CORS — permite llamadas desde el admin (cualquier origen)
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  // Preflight OPTIONS
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { titulo, mensaje, legajo } = req.body || {};
+  const { titulo, mensaje, url, legajo } = req.body;
 
   if (!titulo || !mensaje) {
-    return res.status(400).json({ error: 'titulo y mensaje son requeridos' });
+    return res.status(400).json({ error: 'Faltan titulo o mensaje' });
   }
 
-  const APP_ID  = process.env.ONESIGNAL_APP_ID;
-  const API_KEY = process.env.ONESIGNAL_REST_API_KEY;
+  const ONESIGNAL_APP_ID  = '1abf72a7-51ff-49c2-a913-f90da792dd08';
+  const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY;
 
-  if (!APP_ID || !API_KEY) {
-    console.error('Faltan variables de entorno: ONESIGNAL_APP_ID / ONESIGNAL_REST_API_KEY');
-    return res.status(500).json({ error: 'Configuración de servidor incompleta' });
+  if (!ONESIGNAL_API_KEY) {
+    return res.status(500).json({ error: 'API key no configurada' });
   }
 
-  // Target: usuario específico o broadcast
+  // os_v2 keys usan "Bearer", las legacy usan "Key"
+  const authHeader = ONESIGNAL_API_KEY.startsWith('os_v2')
+    ? 'Bearer ' + ONESIGNAL_API_KEY
+    : 'Key ' + ONESIGNAL_API_KEY;
+
+  // Si viene legajo → solo ese alumno (external_id)
+  // Si no viene legajo → broadcast a todos
   const target = legajo
     ? {
         include_aliases: { external_id: [String(legajo)] },
@@ -42,41 +32,40 @@ export default async function handler(req, res) {
         included_segments: ['All'],
       };
 
-  const payload = {
-    app_id: APP_ID,
-    headings: { en: titulo, es: titulo },
-    contents: { en: mensaje, es: mensaje },
-    ...target,
-  };
-
   try {
     const response = await fetch('https://onesignal.com/api/v1/notifications', {
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',
-        'Authorization': `Basic ${API_KEY}`,
+        'Authorization': authHeader,
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        app_id:   ONESIGNAL_APP_ID,
+        headings: { en: titulo },
+        contents: { en: mensaje },
+        url:      url || 'https://ecos-phi-nine.vercel.app',
+        ...target,
+      }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('OneSignal error:', data);
-      return res.status(response.status).json({
-        error: data?.errors?.[0] || 'Error al enviar notificación',
-        detail: data,
+      return res.status(500).json({
+        error:  data.errors?.join(', ') || 'Error OneSignal',
+        status: response.status,
+        detail: JSON.stringify(data),
       });
     }
 
     return res.status(200).json({
+      ok:         true,
       id:         data.id,
-      recipients: data.recipients ?? 0,
+      recipients: data.recipients,
       legajo:     legajo || null,
     });
 
-  } catch (err) {
-    console.error('Error llamando a OneSignal:', err);
-    return res.status(500).json({ error: 'Error interno del servidor' });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
   }
 }
