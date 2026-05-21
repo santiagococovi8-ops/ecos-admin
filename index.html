@@ -1556,20 +1556,16 @@ function verDetallePedido(id) {
   }).join('') || '<p style="color:#94A3B8;font-size:13px;">Sin detalle de items.</p>';
 
   // Bloque de archivo descargable (si existe a nivel pedido)
-  const archivoSection = p.archivos_urls ? `
-    <div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
-      <div style="font-size:11px;font-weight:700;color:#1E40AF;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">📎 Archivo adjunto</div>
-      ${p.archivos_urls.split(' | ').map(url=>`
-        <a href="${url}" target="_blank" download
-          style="display:inline-flex;align-items:center;gap:7px;padding:8px 14px;background:#1D4ED8;border-radius:8px;font-size:13px;font-weight:700;color:white;text-decoration:none;margin-right:6px;">
-          ⬇ Descargar archivo
-        </a>`).join('')}
-    </div>` : '';
-          </div>
-          <div style="font-size:14px;font-weight:800;color:var(--blue);">$${(i.subtotal||i.precio_unit*i.qty||0).toLocaleString('es-AR')}</div>
-        </div>
-      </div>`;
-  }).join('') || '<p style="color:#94A3B8;font-size:13px;">Sin detalle de items.</p>';
+  const archivoSection = p.archivos_urls
+    ? '<div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:10px;padding:12px 14px;margin-bottom:14px;">'
+      + '<div style="font-size:11px;font-weight:700;color:#1E40AF;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">📎 Archivo adjunto</div>'
+      + p.archivos_urls.split(' | ').map(url=>
+          '<a href="' + url + '" target="_blank" download '
+          + 'style="display:inline-flex;align-items:center;gap:7px;padding:8px 14px;background:#1D4ED8;border-radius:8px;font-size:13px;font-weight:700;color:white;text-decoration:none;margin-right:6px;">'
+          + '⬇ Descargar archivo</a>'
+        ).join('')
+      + '</div>'
+    : '';
 
   document.getElementById('modal-pedido-body').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;background:#F8FAFC;border-radius:10px;padding:12px;">
