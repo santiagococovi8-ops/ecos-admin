@@ -379,16 +379,41 @@ tr:hover td{background:var(--gray-50);}
 
       <!-- APUNTES -->
       <div class="panel" id="panel-apuntes">
+        <!-- Años -->
+        <div class="table-card" style="margin-bottom:16px;">
+          <div class="table-header">
+            <div class="table-title">📅 Años</div>
+            <button class="btn-primary" onclick="abrirModal('anio')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nuevo año
+            </button>
+          </div>
+          <table><thead><tr><th>Nombre</th><th>Orden</th><th>Materias</th><th>Acciones</th></tr></thead>
+          <tbody id="tb-anios"></tbody></table>
+        </div>
+        <!-- Materias -->
+        <div class="table-card" style="margin-bottom:16px;">
+          <div class="table-header">
+            <div class="table-title">📚 Materias</div>
+            <button class="btn-primary" onclick="abrirModal('materia')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nueva materia
+            </button>
+          </div>
+          <table><thead><tr><th>Materia</th><th>Año</th><th>Orden</th><th>Apuntes</th><th>Acciones</th></tr></thead>
+          <tbody id="tb-materias"></tbody></table>
+        </div>
+        <!-- Apuntes -->
         <div class="table-card">
           <div class="table-header">
-            <div class="table-title">Catálogo de apuntes</div>
-            <input class="search-input" placeholder="Buscar materia..." oninput="filtrarTabla('tb-apuntes',this.value)">
+            <div class="table-title">📄 Apuntes</div>
+            <input class="search-input" placeholder="Buscar apunte..." oninput="filtrarTabla('tb-apuntes',this.value)">
             <button class="btn-primary" onclick="abrirModal('apunte')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Nuevo apunte
             </button>
           </div>
-          <table><thead><tr><th>Materia</th><th>Año</th><th>Páginas</th><th>Precio auto (×$55/hoja)</th><th>Drive</th><th>Acciones</th></tr></thead>
+          <table><thead><tr><th>Título</th><th>Materia</th><th>Año</th><th>Páginas</th><th>Precio (×$55/hoja)</th><th>Drive</th><th>Acciones</th></tr></thead>
           <tbody id="tb-apuntes"></tbody></table>
         </div>
       </div>
@@ -826,7 +851,21 @@ window._sbLogout = () => {
 // ── GUARDAR en Supabase ──
 window._fbGuardar = async (tabla, id, data) => {
   // Normalizar nombres de campo camelCase → snake_case para noticias
-  let row = { ...data, id: String(id) };
+  let row = { ...data };
+
+  // Para anios y materias nuevos (sin id), hacer INSERT directo (no upsert con id forzado)
+  // Supabase BIGSERIAL genera el id automáticamente
+  if ((tabla === 'anios' || tabla === 'materias') && !row.id) {
+    delete row.id; // asegurar que no viene
+    await SB.authFetch(tabla, {
+      method: 'POST',
+      headers: { 'Prefer': 'return=minimal', 'Content-Type': 'application/json' },
+      body: JSON.stringify(row),
+    });
+    return;
+  }
+
+  row.id = String(id);
   if (tabla === 'noticias') {
     if ('catBg'      in row) { row.cat_bg   = row.catBg;      delete row.catBg; }
     if ('catTxt'     in row) { row.cat_txt  = row.catTxt;     delete row.catTxt; }
@@ -946,6 +985,16 @@ function iniciarListeners() {
       DATA.pedidos = rows;
       if (currentPanel === 'pedidos') renderPedidos();
     }).catch(e => console.warn('Error cargando pedidos:', e.message)),
+
+    anios: () => SB.select('anios', 'order=orden.asc').then(rows => {
+      DATA.anios = rows;
+      if (currentPanel === 'apuntes') renderApuntes();
+    }).catch(e => console.warn('Error cargando anios:', e.message)),
+
+    materias: () => SB.select('materias', 'order=orden.asc').then(rows => {
+      DATA.materias = rows;
+      if (currentPanel === 'apuntes') renderApuntes();
+    }).catch(e => console.warn('Error cargando materias:', e.message)),
   };
 
   // Exponer para que eliminar() pueda recargar
@@ -960,6 +1009,8 @@ function iniciarListeners() {
   SB.subscribe('codigos',  () => reloadTabla.codigos());
   SB.subscribe('usuarios', () => reloadTabla.usuarios());
   SB.subscribe('pedidos',  () => reloadTabla.pedidos());
+  SB.subscribe('anios',    () => { reloadTabla.anios(); reloadTabla.materias(); });
+  SB.subscribe('materias', () => reloadTabla.materias());
 
   initDashboard();
   toast('Supabase conectado ✓', 'ok');
@@ -975,6 +1026,8 @@ let DATA = {
   codigos:  [],
   usuarios: [],
   pedidos:  [],
+  anios:    [],
+  materias: [],
   config:   { wsp:'', horario:'Lun a vie, 9 a 18hs', ubicacion:'Hall de entrada, JurSoc', ig:'@ecosjursoc' }
 };
 
@@ -1211,21 +1264,67 @@ function renderNoticias() {
       </tr>`).join('');
 }
 
+function renderAnios() {
+  const tbody = document.getElementById('tb-anios');
+  if (!tbody) return;
+  tbody.innerHTML = DATA.anios.length === 0
+    ? '<tr><td colspan="4" style="text-align:center;color:var(--gray-400);padding:24px;">Sin años. Agregá el primero.</td></tr>'
+    : DATA.anios.map(a => {
+        const nMaterias = DATA.materias.filter(m => String(m.anio_id) === String(a.id)).length;
+        return `<tr>
+          <td class="td-bold">${esc(a.nombre)}</td>
+          <td>${a.orden}</td>
+          <td>${nMaterias} materia${nMaterias!==1?'s':''}</td>
+          <td class="td-actions">
+            <button class="btn-secondary btn-sm" onclick="editarItem('anio','${a.id}')">Editar</button>
+            <button class="btn-danger btn-sm" onclick="eliminar('anios','${a.id}')">Eliminar</button>
+          </td>
+        </tr>`;
+      }).join('');
+}
+
+function renderMaterias() {
+  const tbody = document.getElementById('tb-materias');
+  if (!tbody) return;
+  tbody.innerHTML = DATA.materias.length === 0
+    ? '<tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:24px;">Sin materias. Agregá la primera.</td></tr>'
+    : DATA.materias.map(m => {
+        const anio = DATA.anios.find(a => String(a.id) === String(m.anio_id));
+        const nApuntes = DATA.apuntes.filter(a => String(a.materia_id) === String(m.id)).length;
+        return `<tr>
+          <td class="td-bold">${esc(m.nombre)}</td>
+          <td><span class="badge badge-blue">${esc(anio?.nombre||'—')}</span></td>
+          <td>${m.orden}</td>
+          <td>${nApuntes} apunte${nApuntes!==1?'s':''}</td>
+          <td class="td-actions">
+            <button class="btn-secondary btn-sm" onclick="editarItem('materia','${m.id}')">Editar</button>
+            <button class="btn-danger btn-sm" onclick="eliminar('materias','${m.id}')">Eliminar</button>
+          </td>
+        </tr>`;
+      }).join('');
+}
+
 function renderApuntes() {
+  renderAnios();
+  renderMaterias();
   document.getElementById('tb-apuntes').innerHTML = DATA.apuntes.length === 0
-    ? '<tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:24px;">Sin apuntes. Agregá el primero.</td></tr>'
-    : DATA.apuntes.map(a => `
-      <tr>
-        <td class="td-bold">${esc(a.materia)||'—'}</td>
-        <td><span class="badge badge-blue">${a.año||'—'}</span></td>
-        <td>${a.paginas||'—'} págs.</td>
-        <td style="font-weight:700;color:var(--blue);">${(()=>{const h=Math.ceil((Number(a.paginas)||1)/2);return '$'+(h*PRECIO_HOJA).toLocaleString('es-AR')+' ('+h+' hjs.)';})()}</td>
-        <td><a href="${a.drive||'#'}" target="_blank" style="color:var(--blue);font-size:12px;">Ver →</a></td>
-        <td class="td-actions">
-          <button class="btn-secondary btn-sm" onclick="editarItem('apunte','${a.id}')">Editar</button>
-          <button class="btn-danger btn-sm" onclick="eliminar('apuntes','${a.id}')">Eliminar</button>
-        </td>
-      </tr>`).join('');
+    ? '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:24px;">Sin apuntes. Agregá el primero.</td></tr>'
+    : DATA.apuntes.map(a => {
+        const mat  = DATA.materias.find(m => String(m.id) === String(a.materia_id));
+        const anio = mat ? DATA.anios.find(an => String(an.id) === String(mat.anio_id)) : null;
+        return `<tr>
+          <td class="td-bold">${esc(a.titulo||a.materia||'—')}</td>
+          <td>${esc(mat?.nombre||a.materia||'—')}</td>
+          <td><span class="badge badge-blue">${esc(anio?.nombre||a.año||'—')}</span></td>
+          <td>${a.paginas||'—'} págs.</td>
+          <td style="font-weight:700;color:var(--blue);">${(()=>{const h=Math.ceil((Number(a.paginas)||1)/2);return '$'+(h*PRECIO_HOJA).toLocaleString('es-AR')+' ('+h+' hjs.)';})()}</td>
+          <td><a href="${a.drive||'#'}" target="_blank" style="color:var(--blue);font-size:12px;">Ver →</a></td>
+          <td class="td-actions">
+            <button class="btn-secondary btn-sm" onclick="editarItem('apunte','${a.id}')">Editar</button>
+            <button class="btn-danger btn-sm" onclick="eliminar('apuntes','${a.id}')">Eliminar</button>
+          </td>
+        </tr>`;
+      }).join('');
 }
 
 function renderCodigos() {
@@ -1517,22 +1616,54 @@ const FORMS = {
       </div>
     </div>`,
 
-  apunte: (d={}) => `
+  apunte: (d={}) => {
+    const materiasOpts = DATA.materias.map(m => {
+      const anio = DATA.anios.find(a => String(a.id) === String(m.anio_id));
+      return `<option value="${m.id}" ${String(d.materia_id)===String(m.id)?'selected':''}>${esc(anio?.nombre||'?')} — ${esc(m.nombre)}</option>`;
+    }).join('');
+    return `
     <div class="form-grid">
-      <div class="f-field span2"><label class="f-lbl">Materia *</label><input class="f-input" id="mf-materia" value="${d.materia||''}" placeholder="Nombre de la materia"></div>
-      <div class="f-field"><label class="f-lbl">Año</label>
-        <select class="f-select" id="mf-año">${['1° año','2° año','3° año','4° año','5° año'].map(a=>`<option ${d.año===a?'selected':''}>${a}</option>`).join('')}</select>
+      <div class="f-field span2"><label class="f-lbl">Título del apunte *</label><input class="f-input" id="mf-titulo" value="${esc(d.titulo||d.materia||'')}" placeholder="Ej: Primer parcial, Resumen completo..."></div>
+      <div class="f-field span2"><label class="f-lbl">Materia *</label>
+        <select class="f-select" id="mf-materia-id">
+          <option value="">— Seleccioná una materia —</option>
+          ${materiasOpts}
+        </select>
       </div>
-      <div class="f-field"><label class="f-lbl">Páginas</label><input type="number" class="f-input" id="mf-paginas" value="${d.paginas||''}" placeholder="180"></div>
+      <div class="f-field"><label class="f-lbl">Páginas</label><input type="number" class="f-input" id="mf-paginas" value="${d.paginas||''}" placeholder="180" oninput="actualizarPrecioModal()"></div>
       <div class="f-field">
         <label class="f-lbl">Precio (calculado automático)</label>
-        <div style="background:#EFF6FF;border-radius:8px;padding:9px 13px;font-size:12px;color:#1E40AF;line-height:1.5;">
+        <div style="background:#EFF6FF;border-radius:8px;padding:9px 13px;font-size:12px;color:#1E40AF;line-height:1.5;" id="mf-precio-info">
           💡 <strong>$${PRECIO_HOJA} × hojas doble faz</strong> · Con ${d.paginas||0} págs. = ${Math.ceil((Number(d.paginas)||1)/2)} hojas = <strong>$${Math.ceil((Number(d.paginas)||1)/2)*PRECIO_HOJA}</strong>
         </div>
         <input type="hidden" id="mf-precio" value="${Math.ceil((Number(d.paginas)||1)/2)*PRECIO_HOJA}">
       </div>
       <div class="f-field span2"><label class="f-lbl">Link de Google Drive</label><input class="f-input" id="mf-drive" value="${d.drive||''}" placeholder="https://drive.google.com/..."></div>
+    </div>`;
+  },
+
+  anio: (d={}) => `
+    <div class="form-grid">
+      <div class="f-field span2"><label class="f-lbl">Nombre del año *</label><input class="f-input" id="mf-anio-nombre" value="${esc(d.nombre||'')}" placeholder="Ej: 1° año, Optativas, Posgrado..."></div>
+      <div class="f-field span2"><label class="f-lbl">Orden (para ordenar en la lista)</label><input type="number" class="f-input" id="mf-anio-orden" value="${d.orden||0}" placeholder="1"></div>
     </div>`,
+
+  materia: (d={}) => {
+    const aniosOpts = DATA.anios.map(a =>
+      `<option value="${a.id}" ${String(d.anio_id)===String(a.id)?'selected':''}>${esc(a.nombre)}</option>`
+    ).join('');
+    return `
+    <div class="form-grid">
+      <div class="f-field span2"><label class="f-lbl">Año *</label>
+        <select class="f-select" id="mf-mat-anio">
+          <option value="">— Seleccioná un año —</option>
+          ${aniosOpts}
+        </select>
+      </div>
+      <div class="f-field span2"><label class="f-lbl">Nombre de la materia *</label><input class="f-input" id="mf-mat-nombre" value="${esc(d.nombre||'')}" placeholder="Ej: Derecho Civil I"></div>
+      <div class="f-field span2"><label class="f-lbl">Orden</label><input type="number" class="f-input" id="mf-mat-orden" value="${d.orden||0}" placeholder="0"></div>
+    </div>`;
+  },
 
   codigo: (d={}) => `
     <div class="form-grid">
@@ -1549,7 +1680,13 @@ const FORMS = {
 function abrirModal(type, data={}) {
   modalType = type;
   editId = data.id || null;
-  const titles = { noticia: editId?'Editar noticia':'Nueva noticia', apunte: editId?'Editar apunte':'Nuevo apunte', codigo: editId?'Editar ECódigo':'Nuevo ECódigo' };
+  const titles = {
+    noticia: editId?'Editar noticia':'Nueva noticia',
+    apunte:  editId?'Editar apunte':'Nuevo apunte',
+    codigo:  editId?'Editar ECódigo':'Nuevo ECódigo',
+    anio:    editId?'Editar año':'Nuevo año',
+    materia: editId?'Editar materia':'Nueva materia',
+  };
   document.getElementById('modal-title').textContent = titles[type];
   document.getElementById('modal-body').innerHTML = FORMS[type](data);
   document.getElementById('modal-overlay').classList.add('on');
@@ -1563,9 +1700,28 @@ function cerrarModal() {
 }
 
 function editarItem(type, id) {
-  const src = { noticia: DATA.noticias, apunte: DATA.apuntes, codigo: DATA.codigos };
+  const src = {
+    noticia: DATA.noticias,
+    apunte:  DATA.apuntes,
+    codigo:  DATA.codigos,
+    anio:    DATA.anios,
+    materia: DATA.materias,
+  };
   const item = (src[type]||[]).find(x => String(x.id) === String(id));
   if (item) abrirModal(type, item);
+}
+
+// ── Precio automático en modal de apunte ──
+function actualizarPrecioModal() {
+  const pInput = document.getElementById('mf-paginas');
+  const info   = document.getElementById('mf-precio-info');
+  const hidden = document.getElementById('mf-precio');
+  if (!pInput || !info) return;
+  const paginas = parseInt(pInput.value) || 0;
+  const hojas   = Math.ceil((paginas || 1) / 2);
+  const precio  = hojas * PRECIO_HOJA;
+  info.innerHTML = `💡 <strong>$${PRECIO_HOJA} × hojas doble faz</strong> · Con ${paginas} págs. = ${hojas} hojas = <strong>$${precio.toLocaleString('es-AR')}</strong>`;
+  if (hidden) hidden.value = precio;
 }
 
 // ── Imagen ──
@@ -1661,16 +1817,35 @@ async function guardarModal() {
       col = 'noticias';
 
     } else if (modalType === 'apunte') {
+      const materiaId = document.getElementById('mf-materia-id').value;
+      const titulo    = document.getElementById('mf-titulo').value.trim();
+      const paginas   = parseInt(document.getElementById('mf-paginas').value)||0;
+      if (!titulo)    { toast('El título es obligatorio','err'); btn.disabled=false; btn.textContent='Guardar'; return; }
+      if (!materiaId) { toast('Seleccioná una materia','err'); btn.disabled=false; btn.textContent='Guardar'; return; }
       obj = {
-        materia: document.getElementById('mf-materia').value.trim(),
-        año:     document.getElementById('mf-año').value,
-        paginas: parseInt(document.getElementById('mf-paginas').value)||0,
-        precio:  Math.ceil((parseInt(document.getElementById('mf-paginas').value)||1)/2)*PRECIO_HOJA,
-        drive:   document.getElementById('mf-drive').value.trim(),
+        titulo,
+        materia_id: parseInt(materiaId),
+        paginas,
+        precio: Math.ceil((paginas||1)/2)*PRECIO_HOJA,
+        drive:  document.getElementById('mf-drive').value.trim(),
       };
-      obj.precio = Math.ceil((obj.paginas||1)/2)*PRECIO_HOJA; // Precio automático
-      if (!obj.materia) { toast('La materia es obligatoria','err'); btn.disabled=false; btn.textContent='Guardar'; return; }
       col = 'apuntes';
+
+    } else if (modalType === 'anio') {
+      const nombre = document.getElementById('mf-anio-nombre').value.trim();
+      const orden  = parseInt(document.getElementById('mf-anio-orden').value)||0;
+      if (!nombre) { toast('El nombre es obligatorio','err'); btn.disabled=false; btn.textContent='Guardar'; return; }
+      obj = { nombre, orden };
+      col = 'anios';
+
+    } else if (modalType === 'materia') {
+      const anioId = document.getElementById('mf-mat-anio').value;
+      const nombre = document.getElementById('mf-mat-nombre').value.trim();
+      const orden  = parseInt(document.getElementById('mf-mat-orden').value)||0;
+      if (!anioId) { toast('Seleccioná un año','err'); btn.disabled=false; btn.textContent='Guardar'; return; }
+      if (!nombre) { toast('El nombre es obligatorio','err'); btn.disabled=false; btn.textContent='Guardar'; return; }
+      obj = { anio_id: parseInt(anioId), nombre, orden };
+      col = 'materias';
 
     } else if (modalType === 'codigo') {
       obj = {
@@ -1684,9 +1859,11 @@ async function guardarModal() {
       col = 'codigos';
     }
 
-    // ID: si es edición usar el existente; si es nuevo usar un string corto legible
+    // ID: si es edición usar el existente;
+    // para anios/materias nuevos no pasar id (Supabase BIGSERIAL lo genera)
+    const usaIdManual = !['anio','materia'].includes(modalType) || editId !== null;
     const id = editId !== null ? String(editId) : String(Date.now()).slice(-6);
-    obj.id = id;
+    if (usaIdManual) obj.id = id;
 
     if (window._fbGuardar) {
       await window._fbGuardar(col, id, obj);
@@ -1704,6 +1881,13 @@ async function guardarModal() {
         codigos: () => SB.select('codigos','order=id.asc').then(rows => {
           DATA.codigos = rows.map(r => ({...r, badgeBg:r.badge_bg||r.badgeBg}));
           renderCodigos();
+        }),
+        anios: () => Promise.all([
+          SB.select('anios','order=orden.asc'),
+          SB.select('materias','order=orden.asc'),
+        ]).then(([a,m]) => { DATA.anios=a; DATA.materias=m; renderApuntes(); }),
+        materias: () => SB.select('materias','order=orden.asc').then(rows => {
+          DATA.materias = rows; renderApuntes();
         }),
       };
       if (reloadMap[col]) await reloadMap[col]();
