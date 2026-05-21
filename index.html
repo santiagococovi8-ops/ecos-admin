@@ -1421,11 +1421,23 @@ function renderPedidos() {
     try { items = typeof p.items === 'string' ? JSON.parse(p.items) : (p.items||[]); } catch(e) {}
     const itemsHtml = items.length > 0
       ? items.map(i => {
+          if (i.esPersonalizado) {
+            const cfg = i.customConfig||{};
+            const precioStr = i.precio_unit > 0 ? ` — <b>$${(i.subtotal||0).toLocaleString('es-AR')}</b>` : ' — <b style="color:#7C3AED;">A confirmar</b>';
+            return `<div style="font-size:12px;color:var(--gray-700);">📁 <b>${esc(cfg.fileName||i.nombre)}</b> · ${cfg.configLabel||''} x${cfg.copias||1}${precioStr}</div>`;
+          }
           if (i.esCod) return `<div style="font-size:12px;color:var(--gray-700);">🎓 <b>${i.nombre}</b> x${i.qty} — <b>$${(i.subtotal||i.precio_unit*i.qty||0).toLocaleString('es-AR')}</b></div>`;
           const rango = (i.desde&&i.hasta) ? ` hojas <b>${i.desde}→${i.hasta}</b> (${i.hojas||i.hasta-i.desde+1} hjs.)` : ` ${i.hojas||'?'} hojas`;
           return `<div style="font-size:12px;color:var(--gray-700);">📄 <b>${i.nombre}</b>${rango} x${i.qty} — <b>$${(i.subtotal||i.precio_unit*i.qty||0).toLocaleString('es-AR')}</b></div>`;
         }).join('')
       : `<div style="font-size:12px;color:var(--gray-500);">${p.items_resumen||p.items||'—'}</div>`;
+
+    // Botón de descarga si hay archivo
+    const archivoBtn = p.archivos_urls
+      ? `<div style="margin-top:5px;"><a href="${p.archivos_urls.split(' | ')[0]}" target="_blank" download
+           style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:6px;font-size:11px;font-weight:700;color:#1D4ED8;text-decoration:none;">
+           ⬇ Descargar archivo</a></div>`
+      : '';
 
     const fecha = p.fecha ? new Date(p.fecha).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
     const pagoLbl = (p.pago||'').includes('trans') ? '🏦 Transferencia' : '💵 Efectivo';
@@ -1434,7 +1446,7 @@ function renderPedidos() {
       <td style="padding:10px 14px;"><span style="font-weight:700;font-size:13px;color:var(--gray-900);">${esc(p.nombre)||'—'}</span></td>
       <td style="padding:10px 14px;font-size:12px;color:var(--gray-500);">${esc(p.legajo)||'—'}</td>
       <td style="padding:10px 14px;"><a href="https://wa.me/${(p.wsp||'').replace(/\D/g,'')}" target="_blank" style="color:var(--green);font-size:12px;">${p.wsp||'—'}</a></td>
-      <td style="padding:10px 14px;max-width:260px;">${itemsHtml}</td>
+      <td style="padding:10px 14px;max-width:260px;">${itemsHtml}${archivoBtn}</td>
       <td style="padding:10px 14px;text-align:right;font-weight:800;font-size:14px;color:var(--blue);white-space:nowrap;">$${Number(p.total||0).toLocaleString('es-AR')}</td>
       <td style="padding:10px 14px;font-size:12px;">${pagoLbl}</td>
       <td style="padding:10px 14px;font-size:11px;color:var(--gray-500);white-space:nowrap;">${fecha}</td>
@@ -1498,6 +1510,29 @@ function verDetallePedido(id) {
   const fecha = p.fecha ? new Date(p.fecha).toLocaleString('es-AR') : '—';
   const pagoLbl = (p.pago||'').includes('trans') ? '🏦 Transferencia bancaria' : '💵 Efectivo en mesita';
   const itemsDetalle = items.map(i => {
+    if (i.esPersonalizado) {
+      const cfg = i.customConfig||{};
+      const precioStr = i.precio_unit > 0
+        ? `$${(i.subtotal||i.precio_unit||0).toLocaleString('es-AR')}`
+        : '<span style="color:#7C3AED;font-weight:800;">A confirmar</span>';
+      return `
+      <div style="padding:10px 0;border-bottom:1px solid #F1F5F9;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:700;">📁 Impresión personalizada</div>
+            <div style="font-size:11px;color:#64748B;margin-top:2px;">Archivo: <b>${esc(cfg.fileName||'—')}</b></div>
+            <div style="font-size:11px;color:#64748B;">Config: ${cfg.configLabel||'—'}</div>
+            ${cfg.copias>1?`<div style="font-size:11px;color:#64748B;">Copias: ${cfg.copias}</div>`:''}
+            ${cfg.aclaraciones?`<div style="font-size:11px;color:#92400E;background:#FFFBEB;border-radius:5px;padding:3px 7px;margin-top:3px;">📝 ${cfg.aclaraciones}</div>`:''}
+            ${cfg.archivoURL?`<a href="${cfg.archivoURL}" target="_blank" download
+              style="display:inline-flex;align-items:center;gap:5px;margin-top:6px;padding:5px 12px;background:#1D4ED8;border-radius:7px;font-size:12px;font-weight:700;color:white;text-decoration:none;">
+              ⬇ Descargar archivo para imprimir</a>`
+            :'<div style="font-size:11px;color:#DC2626;margin-top:4px;">⚠ Archivo no disponible</div>'}
+          </div>
+          <div style="font-size:14px;font-weight:800;color:var(--blue);white-space:nowrap;">${precioStr}</div>
+        </div>
+      </div>`;
+    }
     if (i.esCod) return `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #F1F5F9;">
         <div>
@@ -1514,6 +1549,22 @@ function verDetallePedido(id) {
             <div style="font-size:13px;font-weight:700;">📄 ${i.nombre}</div>
             <div style="font-size:11px;color:#64748B;">${rango} · cantidad: ${i.qty}</div>
             ${i.paginas?`<div style="font-size:11px;color:#94A3B8;">${i.paginas} páginas equiv.</div>`:''}
+          </div>
+          <div style="font-size:14px;font-weight:800;color:var(--blue);">$${(i.subtotal||i.precio_unit*i.qty||0).toLocaleString('es-AR')}</div>
+        </div>
+      </div>`;
+  }).join('') || '<p style="color:#94A3B8;font-size:13px;">Sin detalle de items.</p>';
+
+  // Bloque de archivo descargable (si existe a nivel pedido)
+  const archivoSection = p.archivos_urls ? `
+    <div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:#1E40AF;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">📎 Archivo adjunto</div>
+      ${p.archivos_urls.split(' | ').map(url=>`
+        <a href="${url}" target="_blank" download
+          style="display:inline-flex;align-items:center;gap:7px;padding:8px 14px;background:#1D4ED8;border-radius:8px;font-size:13px;font-weight:700;color:white;text-decoration:none;margin-right:6px;">
+          ⬇ Descargar archivo
+        </a>`).join('')}
+    </div>` : '';
           </div>
           <div style="font-size:14px;font-weight:800;color:var(--blue);">$${(i.subtotal||i.precio_unit*i.qty||0).toLocaleString('es-AR')}</div>
         </div>
@@ -1538,6 +1589,7 @@ function verDetallePedido(id) {
       </div>
     </div>
     ${p.nota?`<div style="background:#FFFBEB;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:13px;color:#92400E;">📝 <b>Nota:</b> ${p.nota}</div>`:''}
+    ${archivoSection}
     <div style="margin-bottom:16px;">${itemsDetalle}</div>
     <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:2px solid #E2E8F0;">
       <span style="font-size:13px;font-weight:700;color:#475569;">Total del pedido</span>
@@ -1550,7 +1602,7 @@ function verDetallePedido(id) {
 function exportarCSVPedidos() {
   const pedidos = DATA.pedidos||[];
   if (!pedidos.length) { toast('No hay pedidos para exportar','err'); return; }
-  const header = ['Nombre','Legajo','WhatsApp','Items','Total','Pago','Fecha','Estado','Nota'];
+  const header = ['Nombre','Legajo','WhatsApp','Items','Total','Pago','Fecha','Estado','Nota','Archivo'];
   const rows = pedidos.map(p => {
     let items = [];
     try { items = typeof p.items==='string'?JSON.parse(p.items):(p.items||[]); } catch(e){}
