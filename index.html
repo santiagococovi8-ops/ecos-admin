@@ -1332,9 +1332,17 @@ async function enviarNotificacion() {
     document.getElementById('notif-mensaje').value = '';
     if (document.getElementById('notif-url')) document.getElementById('notif-url').value = '';
 
-    status.style.color = '#059669';
-    const dest = data.recipients || data.total_count || '?';
-    status.textContent = `✅ Enviada correctamente · ${dest} dispositivo(s)`;
+    // Log completo para diagnóstico
+    console.log('[NOTIF] Respuesta completa OneSignal:', JSON.stringify(data));
+    const dest = (data.recipients !== undefined && data.recipients !== null) ? data.recipients : (data.raw?.recipients ?? null);
+    if (dest === 0 || dest === null) {
+      console.warn('[NOTIF] ⚠ 0 destinatarios. raw:', JSON.stringify(data.raw));
+      status.style.color = '#D97706';
+      status.textContent = '⚠ Enviado a OneSignal pero 0 dispositivos. Revisá F12 → Console para el detalle.';
+    } else {
+      status.style.color = '#059669';
+      status.textContent = `✅ Enviada · ${dest} dispositivo(s)`;
+    }
     toast('Notificación enviada ✓', 'ok');
     await cargarHistorialNotif();
 
@@ -1536,12 +1544,25 @@ async function runDiagnostico() {
     inf('¿Está deployado el archivo api/send-notification.js en Vercel?');
   }
 
-  // 4. Variables de entorno (indirecto)
+  // 4. Variables de entorno — verificación REAL via _debug
   sep(); lines.push('4. CONFIGURACIÓN ONESIGNAL');
-  inf('App ID esperado: 1abf72a7-51ff-49c2-a913-f90da792dd08');
-  inf('El endpoint debe tener ONESIGNAL_API_KEY como variable de entorno en Vercel');
-  inf('Verificá: Vercel Dashboard → Settings → Environment Variables');
-  inf('La API key es la "REST API Key" del panel de OneSignal (no la App Key)');
+  try {
+    const dbgRes = await fetch('/api/send-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ _debug: true }),
+    });
+    const dbg = await dbgRes.json();
+    if (dbg.apiKeyPresent) {
+      ok('ONESIGNAL_API_KEY presente en Vercel (' + (dbg.apiKeyPrefix||'') + ')');
+    } else {
+      err('ONESIGNAL_API_KEY NO está configurada en Vercel → notificaciones no funcionan');
+    }
+    inf('App ID en uso: ' + (dbg.appId || '—'));
+    inf('Node.js: ' + (dbg.nodeVersion || '—'));
+  } catch(e) {
+    err('No se pudo verificar variables de entorno: ' + e.message);
+  }
 
   // 5. Usuarios con datos
   sep(); lines.push('5. SUSCRIPTORES');
