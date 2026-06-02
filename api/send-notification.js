@@ -1,57 +1,29 @@
 /**
- * ══════════════════════════════════════════════════════════════
  * /api/send-notification.js — ECOS JurSoc Push Notifications v2
- * ══════════════════════════════════════════════════════════════
  *
- * Endpoint Vercel para enviar notificaciones push via OneSignal.
- * Soporta:
- *   - Envío MASIVO:     body sin `legajo`    → segmento "Total Subscriptions"
- *   - Envío INDIVIDUAL: body con `legajo`    → alias "external_id" del usuario
- *
- * Variables de entorno requeridas en Vercel:
- *   ONESIGNAL_API_KEY  = REST API Key del panel de OneSignal
- *                        (Settings → Keys & IDs → REST API Key)
- *   ONESIGNAL_APP_ID   = App ID de OneSignal
- *                        (Settings → Keys & IDs → OneSignal App ID)
- *                        Opcional si usás el hardcodeado de fallback.
- *
- * Body JSON esperado:
- *   {
- *     titulo:  string (requerido)
- *     mensaje: string (requerido)
- *     legajo?: string (si viene → envío individual)
- *     url?:    string (URL a abrir al tocar la notificación)
- *     _test?:  boolean (si viene → no enviar a OneSignal, solo validar config)
- *   }
- *
- * Respuesta OK (200):
- *   { id, recipients, errors }
- *
- * Respuesta error (4xx/5xx):
- *   { error: string, details?: any }
+ * Variables de entorno en Vercel:
+ *   ONESIGNAL_API_KEY  = REST API Key (Settings → Keys & IDs → REST API Key)
+ *   ONESIGNAL_APP_ID   = App ID (opcional, hay fallback hardcodeado)
  */
 
 const ONESIGNAL_APP_ID_FALLBACK = '1abf72a7-51ff-49c2-a913-f90da792dd08';
 
 export default async function handler(req, res) {
-  // ── Solo POST ──
+  // CORS headers (por si acaso)
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido. Usá POST.' });
   }
 
-  // ── Leer variables de entorno ──
   const apiKey = process.env.ONESIGNAL_API_KEY;
   const appId  = process.env.ONESIGNAL_APP_ID || ONESIGNAL_APP_ID_FALLBACK;
 
-  if (!apiKey) {
-    console.error('[NOTIF] ONESIGNAL_API_KEY no configurada');
-    return res.status(500).json({
-      error: 'Configuración incompleta: falta ONESIGNAL_API_KEY en variables de entorno de Vercel.',
-      hint: 'Vercel Dashboard → Settings → Environment Variables → agregar ONESIGNAL_API_KEY',
-    });
-  }
-
-  // ── Parsear body ──
+  // ── Modo debug: muestra config sin enviar ──
+  // Llamar con { _debug: true } para ver qué variables hay
   let body;
   try {
     body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
@@ -59,111 +31,99 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Body JSON inválido: ' + e.message });
   }
 
-  const { titulo, mensaje, legajo, url, _test } = body || {};
-
-  // Validar campos requeridos (excepto en modo test)
-  if (!_test) {
-    if (!titulo || typeof titulo !== 'string' || !titulo.trim()) {
-      return res.status(400).json({ error: 'El campo "titulo" es requerido.' });
-    }
-    if (!mensaje || typeof mensaje !== 'string' || !mensaje.trim()) {
-      return res.status(400).json({ error: 'El campo "mensaje" es requerido.' });
-    }
+  if (body?._debug) {
+    return res.status(200).json({
+      debug: true,
+      apiKeyPresent: !!apiKey,
+      apiKeyPrefix: apiKey ? apiKey.slice(0, 12) + '...' : null,
+      appId,
+      nodeVersion: process.version,
+    });
   }
 
-  // ── Modo test: solo validar config ──
-  if (_test) {
+  // ── Modo test: solo valida config ──
+  if (body?._test) {
     return res.status(200).json({
       test: true,
-      message: 'Configuración OK. ONESIGNAL_API_KEY detectada.',
+      message: 'Config OK',
+      apiKeyPresent: !!apiKey,
       appId,
     });
   }
 
-  // ── Construir payload OneSignal ──
-  // Documentación: https://documentation.onesignal.com/reference/create-notification
+  if (!apiKey) {
+    return res.status(500).json({
+      error: 'ONESIGNAL_API_KEY no configurada en Vercel Environment Variables.',
+    });
+  }
+
+  const { titulo, mensaje, legajo, url } = body || {};
+
+  if (!titulo?.trim()) return res.status(400).json({ error: 'titulo requerido' });
+  if (!mensaje?.trim()) return res.status(400).json({ error: 'mensaje requerido' });
+
+  // Sanitizar legajo
+  const sanitizeLegajo = (raw) =>
+    raw ? String(raw).trim().replace(/[^a-zA-Z0-9_\-\.@]/g, '_') : null;
+  const legajoId = sanitizeLegajo(legajo);
+
+  // Construir payload
   const payload = {
     app_id:   appId,
     headings: { en: titulo.trim() },
     contents: { en: mensaje.trim() },
   };
 
-  // URL al abrir la notificación
-  if (url && typeof url === 'string' && url.trim()) {
-    payload.url = url.trim();
-  }
-
-  // Sanitizar legajo para external_id
-  // OneSignal external_id solo acepta: letras, números, guion, underscore, punto, arroba
-  const sanitizeLegajo = (raw) => {
-    if (!raw) return null;
-    return String(raw).trim().replace(/[^a-zA-Z0-9_\-\.@]/g, '_');
-  };
-
-  const legajoId = sanitizeLegajo(legajo);
+  if (url?.trim()) payload.url = url.trim();
 
   if (legajoId) {
-    // ── ENVÍO INDIVIDUAL (via external_id / alias) ──
-    // Sintaxis nueva de OneSignal v12+ (include_aliases)
-    console.log('[NOTIF] Envío individual → legajo:', legajoId);
-    payload.include_aliases = {
-      external_id: [legajoId],
-    };
-    payload.target_channel = 'push';
+    // Envío individual — sintaxis v12+ con include_aliases
+    payload.include_aliases    = { external_id: [legajoId] };
+    payload.target_channel     = 'push';
+    console.log('[NOTIF] Individual → legajo:', legajoId);
   } else {
-    // ── ENVÍO MASIVO (segmento "Total Subscriptions") ──
-    console.log('[NOTIF] Envío masivo → Total Subscriptions');
-    payload.included_segments = ['Total Subscriptions'];
+    // Envío masivo — probar los dos nombres de segmento posibles
+    // OneSignal puede llamarlo "Total Subscriptions" o "Subscribed Users"
+    payload.included_segments  = ['Total Subscriptions'];
+    console.log('[NOTIF] Masivo → Total Subscriptions');
   }
 
-  // ── Llamar a la API de OneSignal ──
-  console.log('[NOTIF] Payload OneSignal:', JSON.stringify(payload));
+  console.log('[NOTIF] Payload:', JSON.stringify(payload));
 
-  let onesignalRes;
+  let onesignalRes, onesignalData;
   try {
     onesignalRes = await fetch('https://onesignal.com/api/v1/notifications', {
-      method: 'POST',
+      method:  'POST',
       headers: {
         'Content-Type':  'application/json',
         'Authorization': 'Key ' + apiKey,
       },
       body: JSON.stringify(payload),
     });
+    const text = await onesignalRes.text();
+    try { onesignalData = JSON.parse(text); }
+    catch(e) { onesignalData = { rawText: text }; }
   } catch(fetchErr) {
-    console.error('[NOTIF] Error de red al contactar OneSignal:', fetchErr.message);
-    return res.status(502).json({
-      error: 'No se pudo contactar la API de OneSignal: ' + fetchErr.message,
-    });
+    return res.status(502).json({ error: 'Error de red: ' + fetchErr.message });
   }
 
-  const onesignalText = await onesignalRes.text();
-  let onesignalData;
-  try {
-    onesignalData = JSON.parse(onesignalText);
-  } catch(e) {
-    onesignalData = { rawText: onesignalText };
-  }
+  console.log('[NOTIF] OneSignal HTTP', onesignalRes.status, JSON.stringify(onesignalData));
 
-  console.log('[NOTIF] OneSignal response HTTP', onesignalRes.status, '→', JSON.stringify(onesignalData));
-
-  // ── Manejar respuesta de OneSignal ──
+  // Si OneSignal devuelve error
   if (!onesignalRes.ok) {
-    const errMsg = onesignalData?.errors?.[0]
-      || onesignalData?.error
-      || onesignalData?.message
-      || 'Error de OneSignal HTTP ' + onesignalRes.status;
     return res.status(502).json({
-      error: errMsg,
-      details: onesignalData,
+      error:      onesignalData?.errors?.[0] || 'Error OneSignal ' + onesignalRes.status,
+      details:    onesignalData,
       httpStatus: onesignalRes.status,
     });
   }
 
-  // ── Éxito ──
+  // Éxito — devolver TODO para diagnóstico desde el admin
   return res.status(200).json({
-    id:         onesignalData.id         || null,
-    recipients: onesignalData.recipients || 0,
-    errors:     onesignalData.errors     || [],
+    id:         onesignalData.id              || null,
+    recipients: onesignalData.recipients      ?? null,
+    errors:     onesignalData.errors          || [],
+    external_id_errors: onesignalData.external_id_errors || null,
     raw:        onesignalData,
   });
 }
