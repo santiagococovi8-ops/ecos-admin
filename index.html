@@ -542,31 +542,143 @@ tr:hover td{background:var(--gray-50);}
       </div>
 
       <div class="panel" id="panel-notificaciones">
-        <div style="max-width:680px;">
-          <div class="config-card" style="margin-bottom:16px;">
-            <div class="config-title">🔔 Enviar notificación push</div>
-            <p style="font-size:13px;color:var(--gray-600);line-height:1.6;margin-bottom:16px;">
-              Le llega a todos los usuarios que tengan la app instalada y hayan aceptado los permisos.
-            </p>
-            <div class="f-field" style="margin-bottom:12px;">
-              <label class="f-lbl">Título *</label>
-              <input type="text" class="f-input" id="notif-titulo" placeholder="Ej: Nuevo apunte disponible" maxlength="80">
-            </div>
-            <div class="f-field" style="margin-bottom:16px;">
-              <label class="f-lbl">Mensaje *</label>
-              <textarea class="f-input" id="notif-mensaje" rows="3" placeholder="Ej: Ya está disponible el apunte de Derecho Civil I." style="resize:vertical;min-height:72px;"></textarea>
-            </div>
-            <div style="display:flex;gap:10px;align-items:center;">
-              <button class="btn-primary" onclick="enviarNotificacion()" id="btn-notif">
-                📤 Enviar a todos
-              </button>
-              <span id="notif-status" style="font-size:12px;"></span>
+        <div style="max-width:760px;">
+
+          <!-- ── TABS ── -->
+          <div style="display:flex;gap:6px;margin-bottom:16px;">
+            <button id="ntab-global" onclick="switchNotifTab('global')"
+              style="padding:8px 18px;border-radius:var(--r-pill);border:1.5px solid var(--blue);background:var(--blue);color:white;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;">
+              📢 Todos
+            </button>
+            <button id="ntab-individual" onclick="switchNotifTab('individual')"
+              style="padding:8px 18px;border-radius:var(--r-pill);border:1.5px solid var(--gray-200);background:white;color:var(--gray-700);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;">
+              👤 Individual
+            </button>
+            <button id="ntab-diag" onclick="switchNotifTab('diag')"
+              style="padding:8px 18px;border-radius:var(--r-pill);border:1.5px solid var(--gray-200);background:white;color:var(--gray-700);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;">
+              🔍 Diagnóstico
+            </button>
+          </div>
+
+          <!-- ── TAB GLOBAL ── -->
+          <div id="ntab-global-content">
+            <div class="config-card" style="margin-bottom:16px;">
+              <div class="config-title">📢 Enviar notificación a todos los usuarios</div>
+              <p style="font-size:13px;color:var(--gray-600);line-height:1.6;margin-bottom:16px;">
+                Se envía a todos los dispositivos suscritos. Requiere que el usuario haya aceptado los permisos de notificaciones en la app.
+              </p>
+              <div class="f-field" style="margin-bottom:12px;">
+                <label class="f-lbl">Título *</label>
+                <input type="text" class="f-input" id="notif-titulo" placeholder="Ej: Nuevo apunte disponible" maxlength="80">
+              </div>
+              <div class="f-field" style="margin-bottom:16px;">
+                <label class="f-lbl">Mensaje *</label>
+                <textarea class="f-input" id="notif-mensaje" rows="3" placeholder="Ej: Ya está disponible el apunte de Derecho Civil I." style="resize:vertical;min-height:72px;"></textarea>
+              </div>
+              <div class="f-field" style="margin-bottom:16px;">
+                <label class="f-lbl">URL al abrir (opcional)</label>
+                <input type="text" class="f-input" id="notif-url" placeholder="https://ecos-phi-nine.vercel.app">
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <button class="btn-primary" onclick="enviarNotificacion()" id="btn-notif">
+                  📤 Enviar a todos
+                </button>
+                <span id="notif-status" style="font-size:12px;"></span>
+              </div>
             </div>
           </div>
-          <div class="config-card">
-            <div class="config-title" style="margin-bottom:14px;">📋 Historial</div>
+
+          <!-- ── TAB INDIVIDUAL ── -->
+          <div id="ntab-individual-content" style="display:none;">
+            <div class="config-card" style="margin-bottom:16px;">
+              <div class="config-title">👤 Enviar notificación a usuario específico</div>
+              <p style="font-size:13px;color:var(--gray-600);line-height:1.6;margin-bottom:16px;">
+                Se envía solo al dispositivo del alumno indicado, usando su legajo como identificador. El alumno debe haber iniciado sesión en la app al menos una vez.
+              </p>
+              <div class="f-field" style="margin-bottom:12px;">
+                <label class="f-lbl">Legajo del alumno *</label>
+                <div style="display:flex;gap:8px;">
+                  <input type="text" class="f-input" id="notif-ind-legajo" placeholder="Ej: 12345/6" style="flex:1;">
+                  <button class="btn-secondary" onclick="buscarUsuarioNotif()" style="flex-shrink:0;">Buscar</button>
+                </div>
+                <div id="notif-ind-user-info" style="margin-top:8px;font-size:12px;color:var(--gray-500);"></div>
+              </div>
+              <div class="f-field" style="margin-bottom:12px;">
+                <label class="f-lbl">Título *</label>
+                <input type="text" class="f-input" id="notif-ind-titulo" placeholder="Ej: Tu pedido está listo" maxlength="80">
+              </div>
+              <div class="f-field" style="margin-bottom:16px;">
+                <label class="f-lbl">Mensaje *</label>
+                <textarea class="f-input" id="notif-ind-mensaje" rows="3" placeholder="Ej: Pasá a retirar tu pedido por la mesita de ECOS." style="resize:vertical;min-height:72px;"></textarea>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <button class="btn-primary" onclick="enviarNotificacionIndividual()" id="btn-notif-ind">
+                  📤 Enviar a este usuario
+                </button>
+                <span id="notif-ind-status" style="font-size:12px;"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── TAB DIAGNÓSTICO ── -->
+          <div id="ntab-diag-content" style="display:none;">
+            <div class="config-card" style="margin-bottom:16px;">
+              <div class="config-title">🔍 Diagnóstico del sistema de notificaciones</div>
+              <p style="font-size:13px;color:var(--gray-600);line-height:1.6;margin-bottom:16px;">
+                Verificá el estado de cada componente del sistema: endpoint Vercel, OneSignal, tabla Supabase y suscriptores activos.
+              </p>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+                <button class="btn-primary" onclick="runDiagnostico()" id="btn-diag">🔍 Ejecutar diagnóstico</button>
+                <button class="btn-secondary" onclick="crearTablaNotif()">🗄️ Crear tabla SQL</button>
+              </div>
+              <div id="diag-results" style="font-size:12px;font-family:monospace;line-height:1.8;color:var(--gray-700);background:var(--gray-50);border-radius:var(--r-sm);padding:14px;min-height:60px;white-space:pre-wrap;word-break:break-all;">
+Presioná "Ejecutar diagnóstico" para ver el estado del sistema.
+              </div>
+            </div>
+            <div class="config-card">
+              <div class="config-title" style="margin-bottom:10px;">📋 SQL para crear tabla <code style="background:var(--gray-100);padding:2px 6px;border-radius:4px;font-size:12px;">notificaciones</code></div>
+              <pre style="background:var(--gray-900);color:#86efac;border-radius:var(--r-sm);padding:14px;font-size:11px;overflow-x:auto;line-height:1.7;white-space:pre-wrap;">-- Script idempotente: funciona con tabla nueva o ya existente
+CREATE TABLE IF NOT EXISTS notificaciones (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  titulo       TEXT NOT NULL,
+  mensaje      TEXT NOT NULL,
+  tipo         TEXT DEFAULT 'push',
+  emoji        TEXT DEFAULT '🔔',
+  destinatario TEXT DEFAULT 'todos',
+  legajo       TEXT,
+  fecha        TIMESTAMPTZ DEFAULT NOW(),
+  fecha_display TEXT,
+  activa       BOOLEAN DEFAULT TRUE,
+  onesignal_id TEXT,
+  recipients   INTEGER DEFAULT 0
+);
+-- Migración: agrega columnas si la tabla ya existía sin ellas
+ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS destinatario TEXT DEFAULT 'todos';
+ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS legajo       TEXT;
+ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS onesignal_id TEXT;
+ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS recipients   INTEGER DEFAULT 0;
+ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS fecha_display TEXT;
+ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS activa       BOOLEAN DEFAULT TRUE;
+ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS emoji        TEXT DEFAULT '🔔';
+ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS tipo         TEXT DEFAULT 'push';
+ALTER TABLE notificaciones ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Admin full access" ON notificaciones;
+CREATE POLICY "Admin full access" ON notificaciones
+  FOR ALL USING (true) WITH CHECK (true);
+CREATE INDEX IF NOT EXISTS idx_notificaciones_fecha  ON notificaciones (fecha DESC);
+CREATE INDEX IF NOT EXISTS idx_notificaciones_legajo ON notificaciones (legajo);</pre>
+            </div>
+          </div>
+
+          <!-- ── HISTORIAL (siempre visible) ── -->
+          <div class="config-card" style="margin-top:16px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+              <div class="config-title" style="margin-bottom:0;">📋 Historial de notificaciones</div>
+              <button class="btn-secondary btn-sm" onclick="cargarHistorialNotif()">↻ Actualizar</button>
+            </div>
             <div id="notif-lista"><div style="font-size:13px;color:var(--gray-400);text-align:center;padding:20px 0;">Cargando...</div></div>
           </div>
+
         </div>
       </div>
 
@@ -1116,10 +1228,84 @@ function goPanel(name) {
 }
 
 
-// ── NOTIFICACIONES PUSH ──
+// ══════════════════════════════════════════════════════════════
+// SISTEMA DE NOTIFICACIONES — v2 (reconstruido)
+// ══════════════════════════════════════════════════════════════
+
+// ── Tabs de notificaciones ──
+function switchNotifTab(tab) {
+  ['global','individual','diag'].forEach(t => {
+    const btn = document.getElementById('ntab-' + t);
+    const content = document.getElementById('ntab-' + t + '-content');
+    if (!btn || !content) return;
+    const isActive = t === tab;
+    btn.style.background    = isActive ? 'var(--blue)'    : 'white';
+    btn.style.color         = isActive ? 'white'          : 'var(--gray-700)';
+    btn.style.borderColor   = isActive ? 'var(--blue)'    : 'var(--gray-200)';
+    content.style.display   = isActive ? 'block'          : 'none';
+  });
+  if (tab === 'diag') runDiagnostico();
+}
+
+// ── Helper: llamar al endpoint con logging ──
+async function _callSendNotification(payload, logEl) {
+  const log = (msg) => { if (logEl) logEl.textContent += msg + '\n'; console.log('[NOTIF]', msg); };
+
+  log('→ POST /api/send-notification');
+  log('  payload: ' + JSON.stringify(payload));
+
+  const res = await fetch('/api/send-notification', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch(e) { data = { rawText: text }; }
+
+  log('← HTTP ' + res.status);
+  log('  respuesta: ' + JSON.stringify(data));
+
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || 'HTTP ' + res.status + ': ' + text.slice(0,200));
+  }
+  return data;
+}
+
+// ── Helper: guardar en historial Supabase ──
+async function _guardarEnHistorial(titulo, mensaje, extras = {}) {
+  const row = {
+    titulo,
+    mensaje,
+    tipo:          'push',
+    emoji:         extras.legajo ? '👤' : '🔔',
+    destinatario:  extras.legajo ? 'individual' : 'todos',
+    legajo:        extras.legajo || null,
+    fecha:         new Date().toISOString(),
+    fecha_display: new Date().toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }),
+    activa:        true,
+    onesignal_id:  extras.onesignal_id || null,
+    recipients:    extras.recipients || 0,
+  };
+  // No tiene id: dejar que Supabase lo genere (BIGSERIAL)
+  try {
+    await SB.authFetch('notificaciones', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify(row),
+    });
+  } catch(e) {
+    console.warn('[NOTIF] Error guardando historial:', e.message);
+    // No propagamos: el envío fue exitoso aunque no se guarde el log
+  }
+}
+
+// ── Enviar a TODOS ──
 async function enviarNotificacion() {
   const titulo  = document.getElementById('notif-titulo').value.trim();
   const mensaje = document.getElementById('notif-mensaje').value.trim();
+  const url     = document.getElementById('notif-url')?.value.trim() || '';
   const status  = document.getElementById('notif-status');
   const btn     = document.getElementById('btn-notif');
 
@@ -1127,79 +1313,253 @@ async function enviarNotificacion() {
   if (!mensaje) { document.getElementById('notif-mensaje').focus(); return; }
 
   btn.disabled = true;
-  btn.textContent = 'Enviando...';
-  status.textContent = '';
+  btn.textContent = '⏳ Enviando...';
+  status.style.color = 'var(--gray-400)';
+  status.textContent = 'Contactando servidor...';
 
   try {
-    const res = await fetch('/api/send-notification', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titulo, mensaje }),
+    const payload = { titulo, mensaje };
+    if (url) payload.url = url;
+
+    const data = await _callSendNotification(payload, null);
+
+    await _guardarEnHistorial(titulo, mensaje, {
+      onesignal_id: data.id || data.notification_id || null,
+      recipients:   data.recipients || data.total_count || 0,
     });
-
-    const data = await res.json();
-
-    if (!res.ok) throw new Error(data.error || 'Error al enviar');
-
-    // Guardar en historial Supabase
-    await SB.authUpsert('notificaciones', [{
-      titulo,
-      mensaje,
-      tipo: 'push',
-      emoji: '🔔',
-      fecha: new Date().toISOString(),
-      fecha_display: new Date().toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }),
-      activa: true,
-      onesignal_id: data.id || null,
-      recipients: data.recipients || 0,
-    }]).catch(() => {});
 
     document.getElementById('notif-titulo').value  = '';
     document.getElementById('notif-mensaje').value = '';
+    if (document.getElementById('notif-url')) document.getElementById('notif-url').value = '';
+
     status.style.color = '#059669';
-    status.textContent = `✓ Enviada a ${data.recipients || 0} dispositivo(s)`;
+    const dest = data.recipients || data.total_count || '?';
+    status.textContent = `✅ Enviada correctamente · ${dest} dispositivo(s)`;
+    toast('Notificación enviada ✓', 'ok');
     await cargarHistorialNotif();
 
   } catch(e) {
+    console.error('[NOTIF] Error envío masivo:', e);
     status.style.color = '#EF4444';
     status.textContent = '✗ ' + (e.message || 'Error desconocido');
+    toast('Error al enviar notificación', 'err');
   } finally {
     btn.disabled = false;
     btn.textContent = '📤 Enviar a todos';
-    setTimeout(() => { status.textContent = ''; }, 6000);
+    setTimeout(() => { if (status.textContent.startsWith('✅')) status.textContent = ''; }, 8000);
   }
 }
 
+// ── Enviar INDIVIDUAL ──
+function buscarUsuarioNotif() {
+  const legajo = document.getElementById('notif-ind-legajo').value.trim();
+  const info   = document.getElementById('notif-ind-user-info');
+  if (!legajo) { info.textContent = 'Ingresá un legajo.'; return; }
+
+  const user = DATA.usuarios.find(u =>
+    String(u.legajo||'').toLowerCase() === legajo.toLowerCase()
+  );
+
+  if (user) {
+    info.innerHTML = `<span style="color:#059669;">✅ Encontrado: <strong>${esc(user.nombre)}</strong> · ${esc(user.legajo)} · ${user.año||'—'}</span>`;
+  } else {
+    info.innerHTML = `<span style="color:#D97706;">⚠ Legajo no encontrado en la base de datos. Podés enviarlo igual si el alumno inició sesión en la app.</span>`;
+  }
+}
+
+async function enviarNotificacionIndividual() {
+  const legajo  = document.getElementById('notif-ind-legajo').value.trim();
+  const titulo  = document.getElementById('notif-ind-titulo').value.trim();
+  const mensaje = document.getElementById('notif-ind-mensaje').value.trim();
+  const status  = document.getElementById('notif-ind-status');
+  const btn     = document.getElementById('btn-notif-ind');
+
+  if (!legajo)  { document.getElementById('notif-ind-legajo').focus();  return; }
+  if (!titulo)  { document.getElementById('notif-ind-titulo').focus();  return; }
+  if (!mensaje) { document.getElementById('notif-ind-mensaje').focus(); return; }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando...';
+  status.style.color = 'var(--gray-400)';
+  status.textContent = 'Contactando servidor...';
+
+  try {
+    const data = await _callSendNotification({ titulo, mensaje, legajo }, null);
+
+    await _guardarEnHistorial(titulo, mensaje, {
+      legajo,
+      onesignal_id: data.id || data.notification_id || null,
+      recipients:   data.recipients || data.total_count || 0,
+    });
+
+    document.getElementById('notif-ind-titulo').value  = '';
+    document.getElementById('notif-ind-mensaje').value = '';
+
+    status.style.color = '#059669';
+    status.textContent = `✅ Enviada correctamente al legajo ${legajo}`;
+    toast('Notificación individual enviada ✓', 'ok');
+    await cargarHistorialNotif();
+
+  } catch(e) {
+    console.error('[NOTIF] Error envío individual:', e);
+    status.style.color = '#EF4444';
+    status.textContent = '✗ ' + (e.message || 'Error desconocido');
+    toast('Error al enviar notificación individual', 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📤 Enviar a este usuario';
+    setTimeout(() => { if (status.textContent.startsWith('✅')) status.textContent = ''; }, 8000);
+  }
+}
+
+// ── Historial ──
 async function cargarHistorialNotif() {
   const lista = document.getElementById('notif-lista');
   if (!lista) return;
   lista.innerHTML = '<div style="font-size:13px;color:var(--gray-400);text-align:center;padding:16px;">Cargando...</div>';
   try {
-    const rows = await SB.select('notificaciones', 'order=fecha.desc&limit=20');
+    const rows = await SB.select('notificaciones', 'order=fecha.desc&limit=30');
     if (!rows || rows.length === 0) {
       lista.innerHTML = '<div style="font-size:13px;color:var(--gray-400);text-align:center;padding:20px 0;">No hay notificaciones enviadas aún.</div>';
       return;
     }
-    lista.innerHTML = rows.map(n => `
+    lista.innerHTML = rows.map(n => {
+      const isInd = n.destinatario === 'individual' || n.legajo;
+      const badge = isInd
+        ? `<span style="font-size:10px;font-weight:700;background:#EDE9FE;color:#7C3AED;padding:2px 7px;border-radius:999px;">👤 ${esc(n.legajo||'individual')}</span>`
+        : `<span style="font-size:10px;font-weight:700;background:#DBEAFE;color:#1E40AF;padding:2px 7px;border-radius:999px;">📢 Todos</span>`;
+      return `
       <div style="display:flex;align-items:flex-start;gap:12px;padding:12px;background:var(--gray-50);border-radius:10px;border:1px solid var(--gray-100);margin-bottom:8px;">
-        <div style="font-size:20px;flex-shrink:0;">🔔</div>
+        <div style="font-size:20px;flex-shrink:0;">${isInd ? '👤' : '🔔'}</div>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:700;color:var(--gray-900);margin-bottom:2px;">${esc(n.titulo)}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+            <div style="font-size:13px;font-weight:700;color:var(--gray-900);">${esc(n.titulo)}</div>
+            ${badge}
+          </div>
           <div style="font-size:12px;color:var(--gray-600);line-height:1.5;margin-bottom:4px;">${esc(n.mensaje)}</div>
           <div style="font-size:11px;color:var(--gray-400);">${n.fecha_display || ''} ${n.recipients ? '· ' + n.recipients + ' dispositivo(s)' : ''}</div>
         </div>
-        <button onclick="eliminarNotif('${n.id}')" style="background:none;border:none;color:var(--gray-300);cursor:pointer;font-size:18px;padding:2px 6px;flex-shrink:0;">×</button>
-      </div>
-    `).join('');
+        <button onclick="eliminarNotif('${n.id}')" style="background:none;border:none;color:var(--gray-300);cursor:pointer;font-size:18px;padding:2px 6px;flex-shrink:0;" title="Eliminar del historial">×</button>
+      </div>`;
+    }).join('');
   } catch(e) {
-    lista.innerHTML = '<div style="font-size:13px;color:#EF4444;padding:12px;">Error: ' + (e.message||'') + '</div>';
+    console.error('[NOTIF] Error cargando historial:', e);
+    if (e.message && e.message.includes('42P01')) {
+      // Tabla no existe
+      lista.innerHTML = `<div style="font-size:13px;color:#D97706;padding:12px;background:#FFFBEB;border-radius:8px;line-height:1.6;">
+        ⚠ La tabla <strong>notificaciones</strong> no existe en Supabase todavía.<br>
+        Andá a la pestaña <strong>🔍 Diagnóstico</strong> y copiá el SQL para crearla.
+      </div>`;
+    } else {
+      lista.innerHTML = '<div style="font-size:13px;color:#EF4444;padding:12px;">Error al cargar historial: ' + esc(e.message||'') + '</div>';
+    }
   }
 }
 
 async function eliminarNotif(id) {
   if (!confirm('¿Eliminar del historial?')) return;
-  try { await SB.remove('notificaciones', id); await cargarHistorialNotif(); }
-  catch(e) { alert('Error: ' + e.message); }
+  try {
+    await SB.authRemove('notificaciones', String(id));
+    await cargarHistorialNotif();
+    toast('Eliminado del historial', 'ok');
+  } catch(e) {
+    toast('Error: ' + e.message, 'err');
+  }
+}
+
+// ── Diagnóstico completo ──
+async function runDiagnostico() {
+  const el = document.getElementById('diag-results');
+  if (!el) return;
+  const btn = document.getElementById('btn-diag');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Verificando...'; }
+
+  const lines = [];
+  const ok  = (s) => lines.push('✅ ' + s);
+  const err = (s) => lines.push('❌ ' + s);
+  const inf = (s) => lines.push('ℹ️  ' + s);
+  const sep = ()  => lines.push('─────────────────────────────────');
+
+  el.textContent = 'Ejecutando diagnóstico...\n';
+
+  // 1. Supabase conectividad
+  sep(); lines.push('1. SUPABASE');
+  try {
+    const rows = await SB.select('usuarios', 'select=id&limit=1');
+    ok('Supabase responde correctamente');
+    inf('Usuarios en BD: ' + DATA.usuarios.length);
+  } catch(e) {
+    err('Error de conexión Supabase: ' + e.message);
+  }
+
+  // 2. Tabla notificaciones
+  sep(); lines.push('2. TABLA notificaciones');
+  try {
+    const rows = await SB.select('notificaciones', 'limit=1');
+    ok('Tabla notificaciones existe');
+    inf('Registros: comprobado OK');
+  } catch(e) {
+    if (e.message && e.message.includes('42P01')) {
+      err('La tabla notificaciones NO EXISTE → ejecutá el SQL de abajo');
+    } else {
+      err('Error al verificar tabla: ' + e.message);
+    }
+  }
+
+  // 3. Endpoint Vercel
+  sep(); lines.push('3. ENDPOINT /api/send-notification');
+  try {
+    const testPayload = { titulo: 'DIAGNÓSTICO', mensaje: 'Test de diagnóstico — no enviar', _test: true };
+    const res = await fetch('/api/send-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(testPayload),
+    });
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch(e) { data = null; }
+
+    inf('HTTP status: ' + res.status);
+    if (res.status === 200) {
+      ok('Endpoint responde OK');
+      if (data?.id || data?.notification_id) ok('OneSignal ID recibido: ' + (data.id || data.notification_id));
+      if (data?.recipients !== undefined) inf('Destinatarios reportados: ' + data.recipients);
+      if (data?.errors?.length) err('OneSignal errors: ' + JSON.stringify(data.errors));
+    } else if (res.status === 400 && data?.error?.includes('_test')) {
+      ok('Endpoint activo (rechazó test correctamente)');
+    } else {
+      err('Endpoint devolvió error ' + res.status);
+      inf('Respuesta: ' + text.slice(0, 300));
+    }
+  } catch(e) {
+    err('No se pudo contactar el endpoint: ' + e.message);
+    inf('¿Está deployado el archivo api/send-notification.js en Vercel?');
+  }
+
+  // 4. Variables de entorno (indirecto)
+  sep(); lines.push('4. CONFIGURACIÓN ONESIGNAL');
+  inf('App ID esperado: 1abf72a7-51ff-49c2-a913-f90da792dd08');
+  inf('El endpoint debe tener ONESIGNAL_API_KEY como variable de entorno en Vercel');
+  inf('Verificá: Vercel Dashboard → Settings → Environment Variables');
+  inf('La API key es la "REST API Key" del panel de OneSignal (no la App Key)');
+
+  // 5. Usuarios con datos
+  sep(); lines.push('5. SUSCRIPTORES');
+  inf('Usuarios registrados en BD: ' + DATA.usuarios.length);
+  inf('Suscriptores activos: se ven en OneSignal Dashboard → Audience');
+  inf('Para que un usuario reciba notificaciones debe:');
+  inf('  a) Haber abierto la app y aceptado permisos de notificaciones');
+  inf('  b) El SW (service worker) de OneSignal debe estar registrado');
+
+  sep();
+  el.textContent = lines.join('\n');
+  if (btn) { btn.disabled = false; btn.textContent = '🔍 Ejecutar diagnóstico'; }
+}
+
+// ── Crear tabla (instrucciones) ──
+function crearTablaNotif() {
+  switchNotifTab('diag');
+  toast('Copiá el SQL de abajo y ejecutalo en Supabase → SQL Editor', 'ok');
 }
 
 // ── Dashboard ──
@@ -1488,16 +1848,10 @@ async function cambiarEstadoPedido(id, estado) {
     };
     const notif = notifPorEstado[estado];
     if (notif && p?.legajo) {
-      // Intentar envío push segmentado por legajo (external_id de OneSignal)
-      fetch('/api/send-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          titulo:  notif.titulo,
-          mensaje: notif.mensaje,
-          legajo:  String(p.legajo), // usado como external_id en OneSignal
-        }),
-      }).catch(() => {}); // silencioso: el PATCH ya fue exitoso
+      // Envío push individual por legajo (external_id de OneSignal)
+      _callSendNotification({ titulo: notif.titulo, mensaje: notif.mensaje, legajo: String(p.legajo) }, null)
+        .then(data => _guardarEnHistorial(notif.titulo, notif.mensaje, { legajo: String(p.legajo), recipients: data.recipients || 0 }))
+        .catch(e => console.warn('[NOTIF] Push automático de pedido falló (silencioso):', e.message));
     }
   } catch(e) { toast('Error al actualizar','err'); }
 }
