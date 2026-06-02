@@ -1332,16 +1332,17 @@ async function enviarNotificacion() {
     document.getElementById('notif-mensaje').value = '';
     if (document.getElementById('notif-url')) document.getElementById('notif-url').value = '';
 
-    // Log completo para diagnóstico
-    console.log('[NOTIF] Respuesta completa OneSignal:', JSON.stringify(data));
-    const dest = (data.recipients !== undefined && data.recipients !== null) ? data.recipients : (data.raw?.recipients ?? null);
-    if (dest === 0 || dest === null) {
-      console.warn('[NOTIF] ⚠ 0 destinatarios. raw:', JSON.stringify(data.raw));
-      status.style.color = '#D97706';
-      status.textContent = '⚠ Enviado a OneSignal pero 0 dispositivos. Revisá F12 → Console para el detalle.';
-    } else {
+    // OneSignal a veces devuelve recipients: null aunque el envío fue exitoso
+    // (lo procesa async). Si hay id, el envío fue aceptado correctamente.
+    console.log('[NOTIF] Respuesta OneSignal:', JSON.stringify(data));
+    const dest = data.recipients ?? null;
+    const enviada = !!data.id;
+    if (enviada) {
       status.style.color = '#059669';
-      status.textContent = `✅ Enviada · ${dest} dispositivo(s)`;
+      status.textContent = dest > 0 ? `✅ Enviada · ${dest} dispositivo(s)` : '✅ Enviada correctamente';
+    } else {
+      status.style.color = '#D97706';
+      status.textContent = '⚠ Respuesta inesperada de OneSignal — revisá F12';
     }
     toast('Notificación enviada ✓', 'ok');
     await cargarHistorialNotif();
