@@ -306,6 +306,10 @@ tr:hover td{background:var(--gray-50);}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         <span>ECódigos</span>
       </div>
+      <div class="sb-item" onclick="goPanel('bibliografia')" id="sb-bibliografia">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        <span>Bibliografía</span>
+      </div>
       <div class="sb-section">Estudiantes</div>
       <div class="sb-item" onclick="goPanel('usuarios')" id="sb-usuarios">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -430,6 +434,22 @@ tr:hover td{background:var(--gray-50);}
           </div>
           <table><thead><tr><th>Nombre</th><th>Edición</th><th>Precio</th><th>Stock</th><th>Acciones</th></tr></thead>
           <tbody id="tb-codigos"></tbody></table>
+        </div>
+      </div>
+
+      <!-- BIBLIOGRAFÍA (independiente de Apuntes) -->
+      <div class="panel" id="panel-bibliografia">
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">📚 Bibliografía</div>
+            <input class="search-input" placeholder="Buscar libro o autor..." oninput="filtrarTabla('tb-bibliografia',this.value)">
+            <button class="btn-primary" onclick="abrirModal('libro')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nuevo libro
+            </button>
+          </div>
+          <table><thead><tr><th>Título</th><th>Autor</th><th>Edición</th><th>Precio</th><th>Orden</th><th>Drive</th><th>Acciones</th></tr></thead>
+          <tbody id="tb-bibliografia"></tbody></table>
         </div>
       </div>
 
@@ -733,6 +753,7 @@ CREATE INDEX IF NOT EXISTS idx_notificaciones_legajo ON notificaciones (legajo);
       <button class="mnav-drawer-item" onclick="goPanel('noticias');toggleMobileMenu()">📰 Noticias</button>
       <button class="mnav-drawer-item" onclick="goPanel('apuntes');toggleMobileMenu()">📚 Apuntes</button>
       <button class="mnav-drawer-item" onclick="goPanel('codigos');toggleMobileMenu()">💻 ECódigos</button>
+      <button class="mnav-drawer-item" onclick="goPanel('bibliografia');toggleMobileMenu()">📚 Bibliografía</button>
       <button class="mnav-drawer-item" onclick="goPanel('config');toggleMobileMenu()">⚙️ Config</button>
     </div>
   </div>
@@ -1011,10 +1032,11 @@ window._seedSupabase = async () => {
   btn.disabled = true; btn.textContent = '⏳ Cargando...';
   try {
     let total = 0;
-    const [n,a,c] = await Promise.all([
+    const [n,a,c,b] = await Promise.all([
       SB.select('noticias','select=id&limit=1'),
       SB.select('apuntes','select=id&limit=1'),
       SB.select('codigos','select=id&limit=1'),
+      SB.select('bibliografia','select=id&limit=1').catch(()=>[]),
     ]);
     if (n.length === 0) {
       sts.textContent = 'Cargando noticias...';
@@ -1052,6 +1074,14 @@ window._seedSupabase = async () => {
         {id:'103',nombre:'Constitución Nacional',subtitulo:'Argentina',badge:'📗',badge_bg:'#ECFDF5',edicion:'Edición 2024 · Formato bolsillo',descripcion:'Texto completo con la reforma de 1994.',precio:3500,stock:true},
       ]); total += 3;
     }
+    if (b.length === 0) {
+      sts.textContent = 'Cargando bibliografía...';
+      await SB.authUpsert('bibliografia',[
+        {id:'301',orden:1,titulo:'Tratado de Derecho Civil — Parte General',autor:'Julio César Rivera',edicion:'Edición 2023 · Tapa dura',descripcion:'Manual de referencia para Derecho Civil I y II.',precio:12000,drive:''},
+        {id:'302',orden:2,titulo:'Manual de Derecho Constitucional',autor:'Néstor Pedro Sagüés',edicion:'Edición 2022',descripcion:'Bibliografía obligatoria para Derecho Constitucional.',precio:9500,drive:''},
+        {id:'303',orden:3,titulo:'Derecho Penal — Parte General',autor:'Eugenio Raúl Zaffaroni',edicion:'Edición 2021',descripcion:'Texto de cátedra para Derecho Penal I.',precio:11000,drive:''},
+      ]).catch(()=>{}); total += 3;
+    }
     if (total > 0) {
       sts.textContent = `✅ ${total} registros cargados correctamente`;
       sts.style.color = '#059669';
@@ -1088,6 +1118,11 @@ function iniciarListeners() {
       if (currentPanel === 'codigos') renderCodigos();
     }).catch(e => console.warn('Error cargando codigos:', e.message)),
 
+    bibliografia: () => SB.select('bibliografia', 'order=orden.asc,id.asc').then(rows => {
+      DATA.bibliografia = rows.map(r => ({...r, precio:Number(r.precio)||0, orden:Number(r.orden)||0}));
+      if (currentPanel === 'bibliografia') renderBibliografia();
+    }).catch(e => console.warn('Error cargando bibliografia (¿falta crear la tabla?):', e.message)),
+
     usuarios: () => SB.select('usuarios', 'order=id.asc').then(rows => {
       DATA.usuarios = rows;
       if (['usuarios','dashboard'].includes(currentPanel)) { renderUsuarios(); initDashboard(); }
@@ -1119,6 +1154,7 @@ function iniciarListeners() {
   SB.subscribe('noticias', () => reloadTabla.noticias());
   SB.subscribe('apuntes',  () => reloadTabla.apuntes());
   SB.subscribe('codigos',  () => reloadTabla.codigos());
+  SB.subscribe('bibliografia', () => reloadTabla.bibliografia());
   SB.subscribe('usuarios', () => reloadTabla.usuarios());
   SB.subscribe('pedidos',  () => reloadTabla.pedidos());
   SB.subscribe('anios',    () => { reloadTabla.anios(); reloadTabla.materias(); });
@@ -1136,6 +1172,7 @@ let DATA = {
   noticias: [],
   apuntes:  [],
   codigos:  [],
+  bibliografia: [],
   usuarios: [],
   pedidos:  [],
   anios:    [],
@@ -1212,13 +1249,14 @@ function goPanel(name) {
   const mnItem = document.getElementById('mn-' + name);
   if (mnItem) mnItem.classList.add('active');
   document.getElementById('panel-' + name).classList.add('active');
-  const titles = { dashboard:'Dashboard', noticias:'Noticias', apuntes:'Apuntes', codigos:'ECódigos', usuarios:'Usuarios', pedidos:'Pedidos', notificaciones:'Notificaciones Push', config:'Configuración' };
+  const titles = { dashboard:'Dashboard', noticias:'Noticias', apuntes:'Apuntes', codigos:'ECódigos', bibliografia:'Bibliografía', usuarios:'Usuarios', pedidos:'Pedidos', notificaciones:'Notificaciones Push', config:'Configuración' };
   document.getElementById('top-title').textContent = titles[name] || name;
   currentPanel = name;
   // Recargar datos frescos al cambiar de panel
   if (window._reloadTabla) {
     if (name === 'codigos')  window._reloadTabla.codigos();
     if (name === 'apuntes')  window._reloadTabla.apuntes();
+    if (name === 'bibliografia') window._reloadTabla.bibliografia();
     if (name === 'noticias') window._reloadTabla.noticias();
     if (name === 'usuarios') window._reloadTabla.usuarios();
     if (name === 'pedidos')  window._reloadTabla.pedidos();
@@ -1620,7 +1658,7 @@ function initDashboard() {
 }
 
 // ── Render tablas ──
-function renderAll() { renderNoticias(); renderApuntes(); renderCodigos(); renderUsuarios(); renderPedidos(); initDashboard(); }
+function renderAll() { renderNoticias(); renderApuntes(); renderCodigos(); renderBibliografia(); renderUsuarios(); renderPedidos(); initDashboard(); }
 
 function renderNoticias() {
   const cats = {ACTIVIDAD:'badge-blue',COMUNICADO:'badge-gray',APUNTES:'badge-green',CONVOCATORIA:'badge-yellow',MESITA:'badge-yellow'};
@@ -1721,6 +1759,28 @@ function renderCodigos() {
         <td class="td-actions">
           <button class="btn-secondary btn-sm" onclick="editarItem('codigo','${c.id}')">Editar</button>
           <button class="btn-danger btn-sm" onclick="eliminar('codigos','${c.id}')">Eliminar</button>
+        </td>
+      </tr>`).join('');
+}
+
+// Bibliografía: módulo 100% independiente de Apuntes (no comparte tabla ni listado)
+function renderBibliografia() {
+  const tb = document.getElementById('tb-bibliografia');
+  if (!tb) return;
+  const rows = [...DATA.bibliografia].sort((x,y)=>(x.orden||0)-(y.orden||0));
+  tb.innerHTML = rows.length === 0
+    ? '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:24px;">Sin bibliografía cargada.</td></tr>'
+    : rows.map(b => `
+      <tr>
+        <td class="td-bold">${esc(b.titulo)||'—'}</td>
+        <td>${esc(b.autor)||'—'}</td>
+        <td>${esc(b.edicion)||'—'}</td>
+        <td style="font-weight:700;color:var(--blue);">$${Number(b.precio||0).toLocaleString('es-AR')}</td>
+        <td>${b.orden ?? '—'}</td>
+        <td>${b.drive ? '<a href="'+esc(b.drive)+'" target="_blank" style="color:var(--blue);font-size:12px;">Ver →</a>' : '<span style="color:var(--gray-400);">—</span>'}</td>
+        <td class="td-actions">
+          <button class="btn-secondary btn-sm" onclick="editarItem('libro','${b.id}')">Editar</button>
+          <button class="btn-danger btn-sm" onclick="eliminar('bibliografia','${b.id}')">Eliminar</button>
         </td>
       </tr>`).join('');
 }
@@ -2099,6 +2159,18 @@ const FORMS = {
         <select class="f-select" id="mf-stock"><option value="1" ${d.stock?'selected':''}>Sí</option><option value="0" ${!d.stock?'selected':''}>No</option></select>
       </div>
     </div>`,
+
+  // Bibliografía: formulario propio, independiente del de Apuntes/ECódigos
+  libro: (d={}) => `
+    <div class="form-grid">
+      <div class="f-field span2"><label class="f-lbl">Título *</label><input class="f-input" id="mf-lib-titulo" value="${esc(d.titulo||'')}" placeholder="Tratado de Derecho Civil"></div>
+      <div class="f-field"><label class="f-lbl">Autor</label><input class="f-input" id="mf-lib-autor" value="${esc(d.autor||'')}" placeholder="Julio César Rivera"></div>
+      <div class="f-field"><label class="f-lbl">Edición</label><input class="f-input" id="mf-lib-edicion" value="${esc(d.edicion||'')}" placeholder="Edición 2023"></div>
+      <div class="f-field span2"><label class="f-lbl">Descripción</label><input class="f-input" id="mf-lib-desc" value="${esc(d.descripcion||'')}" placeholder="Breve descripción del libro"></div>
+      <div class="f-field"><label class="f-lbl">Precio ($) *</label><input type="number" class="f-input" id="mf-lib-precio" value="${d.precio||''}" placeholder="12000"></div>
+      <div class="f-field"><label class="f-lbl">Orden</label><input type="number" class="f-input" id="mf-lib-orden" value="${d.orden||0}" placeholder="1"></div>
+      <div class="f-field span2"><label class="f-lbl">Link de Google Drive (opcional)</label><input class="f-input" id="mf-lib-drive" value="${esc(d.drive||'')}" placeholder="https://drive.google.com/..."></div>
+    </div>`,
 };
 
 function abrirModal(type, data={}) {
@@ -2110,6 +2182,7 @@ function abrirModal(type, data={}) {
     codigo:  editId?'Editar ECódigo':'Nuevo ECódigo',
     anio:    editId?'Editar año':'Nuevo año',
     materia: editId?'Editar materia':'Nueva materia',
+    libro:   editId?'Editar libro':'Nuevo libro',
   };
   document.getElementById('modal-title').textContent = titles[type];
   document.getElementById('modal-body').innerHTML = FORMS[type](data);
@@ -2130,6 +2203,7 @@ function editarItem(type, id) {
     codigo:  DATA.codigos,
     anio:    DATA.anios,
     materia: DATA.materias,
+    libro:   DATA.bibliografia,
   };
   const item = (src[type]||[]).find(x => String(x.id) === String(id));
   if (item) abrirModal(type, item);
@@ -2281,6 +2355,19 @@ async function guardarModal() {
       };
       if (!obj.nombre || !obj.precio) { toast('Nombre y precio son obligatorios','err'); btn.disabled=false; btn.textContent='Guardar'; return; }
       col = 'codigos';
+
+    } else if (modalType === 'libro') {
+      obj = {
+        titulo:      document.getElementById('mf-lib-titulo').value.trim(),
+        autor:       document.getElementById('mf-lib-autor').value.trim(),
+        edicion:     document.getElementById('mf-lib-edicion').value.trim(),
+        descripcion: document.getElementById('mf-lib-desc').value.trim(),
+        precio:      parseInt(document.getElementById('mf-lib-precio').value)||0,
+        orden:       parseInt(document.getElementById('mf-lib-orden').value)||0,
+        drive:       document.getElementById('mf-lib-drive').value.trim(),
+      };
+      if (!obj.titulo || !obj.precio) { toast('Título y precio son obligatorios','err'); btn.disabled=false; btn.textContent='Guardar'; return; }
+      col = 'bibliografia';
     }
 
     // ID: si es edición usar el existente;
@@ -2305,6 +2392,10 @@ async function guardarModal() {
         codigos: () => SB.select('codigos','order=id.asc').then(rows => {
           DATA.codigos = rows.map(r => ({...r, badgeBg:r.badge_bg||r.badgeBg}));
           renderCodigos();
+        }),
+        bibliografia: () => SB.select('bibliografia','order=orden.asc,id.asc').then(rows => {
+          DATA.bibliografia = rows.map(r => ({...r, precio:Number(r.precio)||0, orden:Number(r.orden)||0}));
+          renderBibliografia();
         }),
         anios: () => Promise.all([
           SB.select('anios','order=orden.asc'),
@@ -2338,7 +2429,7 @@ async function eliminar(col, id) {
   try {
     await window._fbEliminar(col, String(id));
     // Recargar la tabla inmediatamente sin esperar realtime
-    const tablaMap = { noticias:'noticias', apuntes:'apuntes', codigos:'codigos', usuarios:'usuarios', pedidos:'pedidos' };
+    const tablaMap = { noticias:'noticias', apuntes:'apuntes', codigos:'codigos', bibliografia:'bibliografia', usuarios:'usuarios', pedidos:'pedidos' };
     if (window._reloadTabla && tablaMap[col]) await window._reloadTabla[col]();
     toast('Eliminado ✓', 'ok');
   } catch(e) {
