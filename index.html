@@ -448,7 +448,7 @@ tr:hover td{background:var(--gray-50);}
               Nuevo libro
             </button>
           </div>
-          <table><thead><tr><th>Título</th><th>Autor</th><th>Edición</th><th>Precio</th><th>Orden</th><th>Drive</th><th>Acciones</th></tr></thead>
+          <table><thead><tr><th>Título</th><th>Materia</th><th>Año</th><th>Autor</th><th>Precio</th><th>Drive</th><th>Acciones</th></tr></thead>
           <tbody id="tb-bibliografia"></tbody></table>
         </div>
       </div>
@@ -1136,11 +1136,13 @@ function iniciarListeners() {
     anios: () => SB.select('anios', 'order=orden.asc').then(rows => {
       DATA.anios = rows;
       if (currentPanel === 'apuntes') renderApuntes();
+      if (currentPanel === 'bibliografia') renderBibliografia();
     }).catch(e => console.warn('Error cargando anios:', e.message)),
 
     materias: () => SB.select('materias', 'order=orden.asc').then(rows => {
       DATA.materias = rows;
       if (currentPanel === 'apuntes') renderApuntes();
+      if (currentPanel === 'bibliografia') renderBibliografia();
     }).catch(e => console.warn('Error cargando materias:', e.message)),
   };
 
@@ -1256,7 +1258,7 @@ function goPanel(name) {
   if (window._reloadTabla) {
     if (name === 'codigos')  window._reloadTabla.codigos();
     if (name === 'apuntes')  window._reloadTabla.apuntes();
-    if (name === 'bibliografia') window._reloadTabla.bibliografia();
+    if (name === 'bibliografia') { window._reloadTabla.anios(); window._reloadTabla.materias(); window._reloadTabla.bibliografia(); }
     if (name === 'noticias') window._reloadTabla.noticias();
     if (name === 'usuarios') window._reloadTabla.usuarios();
     if (name === 'pedidos')  window._reloadTabla.pedidos();
@@ -1763,26 +1765,29 @@ function renderCodigos() {
       </tr>`).join('');
 }
 
-// Bibliografía: módulo 100% independiente de Apuntes (no comparte tabla ni listado)
+// Bibliografía: listado 100% independiente de Apuntes, organizado con la misma taxonomía año/materia
 function renderBibliografia() {
   const tb = document.getElementById('tb-bibliografia');
   if (!tb) return;
   const rows = [...DATA.bibliografia].sort((x,y)=>(x.orden||0)-(y.orden||0));
   tb.innerHTML = rows.length === 0
     ? '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:24px;">Sin bibliografía cargada.</td></tr>'
-    : rows.map(b => `
-      <tr>
+    : rows.map(b => {
+        const mat  = DATA.materias.find(m => String(m.id) === String(b.materia_id));
+        const anio = mat ? DATA.anios.find(an => String(an.id) === String(mat.anio_id)) : null;
+        return `<tr>
         <td class="td-bold">${esc(b.titulo)||'—'}</td>
+        <td>${esc(mat?.nombre||'—')}</td>
+        <td><span class="badge badge-blue">${esc(anio?.nombre||'—')}</span></td>
         <td>${esc(b.autor)||'—'}</td>
-        <td>${esc(b.edicion)||'—'}</td>
         <td style="font-weight:700;color:var(--blue);">$${Number(b.precio||0).toLocaleString('es-AR')}</td>
-        <td>${b.orden ?? '—'}</td>
         <td>${b.drive ? '<a href="'+esc(b.drive)+'" target="_blank" style="color:var(--blue);font-size:12px;">Ver →</a>' : '<span style="color:var(--gray-400);">—</span>'}</td>
         <td class="td-actions">
           <button class="btn-secondary btn-sm" onclick="editarItem('libro','${b.id}')">Editar</button>
           <button class="btn-danger btn-sm" onclick="eliminar('bibliografia','${b.id}')">Eliminar</button>
         </td>
-      </tr>`).join('');
+      </tr>`;
+      }).join('');
 }
 
 function renderUsuarios() {
@@ -2160,17 +2165,31 @@ const FORMS = {
       </div>
     </div>`,
 
-  // Bibliografía: formulario propio, independiente del de Apuntes/ECódigos
-  libro: (d={}) => `
+  // Bibliografía: formulario propio, independiente del de Apuntes/ECódigos,
+  // pero organizado con la MISMA taxonomía de año/materia (reutiliza DATA.anios/DATA.materias)
+  libro: (d={}) => {
+    const materiasOpts = DATA.materias.map(m => {
+      const anio = DATA.anios.find(a => String(a.id) === String(m.anio_id));
+      return `<option value="${m.id}" ${String(d.materia_id)===String(m.id)?'selected':''}>${esc(anio?.nombre||'?')} — ${esc(m.nombre)}</option>`;
+    }).join('');
+    return `
     <div class="form-grid">
       <div class="f-field span2"><label class="f-lbl">Título *</label><input class="f-input" id="mf-lib-titulo" value="${esc(d.titulo||'')}" placeholder="Tratado de Derecho Civil"></div>
+      <div class="f-field span2"><label class="f-lbl">Materia *</label>
+        <select class="f-select" id="mf-lib-materia-id">
+          <option value="">— Seleccioná una materia —</option>
+          ${materiasOpts}
+        </select>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:4px;">¿Falta un año o materia? Se gestionan desde el panel de <strong>Apuntes</strong> y se comparten automáticamente con Bibliografía.</div>
+      </div>
       <div class="f-field"><label class="f-lbl">Autor</label><input class="f-input" id="mf-lib-autor" value="${esc(d.autor||'')}" placeholder="Julio César Rivera"></div>
       <div class="f-field"><label class="f-lbl">Edición</label><input class="f-input" id="mf-lib-edicion" value="${esc(d.edicion||'')}" placeholder="Edición 2023"></div>
       <div class="f-field span2"><label class="f-lbl">Descripción</label><input class="f-input" id="mf-lib-desc" value="${esc(d.descripcion||'')}" placeholder="Breve descripción del libro"></div>
       <div class="f-field"><label class="f-lbl">Precio ($) *</label><input type="number" class="f-input" id="mf-lib-precio" value="${d.precio||''}" placeholder="12000"></div>
       <div class="f-field"><label class="f-lbl">Orden</label><input type="number" class="f-input" id="mf-lib-orden" value="${d.orden||0}" placeholder="1"></div>
       <div class="f-field span2"><label class="f-lbl">Link de Google Drive (opcional)</label><input class="f-input" id="mf-lib-drive" value="${esc(d.drive||'')}" placeholder="https://drive.google.com/..."></div>
-    </div>`,
+    </div>`;
+  },
 };
 
 function abrirModal(type, data={}) {
@@ -2357,16 +2376,22 @@ async function guardarModal() {
       col = 'codigos';
 
     } else if (modalType === 'libro') {
+      const materiaId = document.getElementById('mf-lib-materia-id').value;
+      const titulo    = document.getElementById('mf-lib-titulo').value.trim();
+      const precio    = parseInt(document.getElementById('mf-lib-precio').value)||0;
+      if (!titulo)    { toast('El título es obligatorio','err'); btn.disabled=false; btn.textContent='Guardar'; return; }
+      if (!materiaId) { toast('Seleccioná una materia','err'); btn.disabled=false; btn.textContent='Guardar'; return; }
+      if (!precio)    { toast('El precio es obligatorio','err'); btn.disabled=false; btn.textContent='Guardar'; return; }
       obj = {
-        titulo:      document.getElementById('mf-lib-titulo').value.trim(),
+        titulo,
+        materia_id:  parseInt(materiaId),
         autor:       document.getElementById('mf-lib-autor').value.trim(),
         edicion:     document.getElementById('mf-lib-edicion').value.trim(),
         descripcion: document.getElementById('mf-lib-desc').value.trim(),
-        precio:      parseInt(document.getElementById('mf-lib-precio').value)||0,
+        precio,
         orden:       parseInt(document.getElementById('mf-lib-orden').value)||0,
         drive:       document.getElementById('mf-lib-drive').value.trim(),
       };
-      if (!obj.titulo || !obj.precio) { toast('Título y precio son obligatorios','err'); btn.disabled=false; btn.textContent='Guardar'; return; }
       col = 'bibliografia';
     }
 
