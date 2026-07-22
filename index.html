@@ -448,7 +448,7 @@ tr:hover td{background:var(--gray-50);}
               Nuevo libro
             </button>
           </div>
-          <table><thead><tr><th>Título</th><th>Materia</th><th>Año</th><th>Autor</th><th>Precio</th><th>Drive</th><th>Acciones</th></tr></thead>
+          <table><thead><tr><th>Título</th><th>Autor</th><th>Materia</th><th>Año</th><th>Páginas</th><th>Precio</th><th>Drive</th><th>Acciones</th></tr></thead>
           <tbody id="tb-bibliografia"></tbody></table>
         </div>
       </div>
@@ -1077,9 +1077,9 @@ window._seedSupabase = async () => {
     if (b.length === 0) {
       sts.textContent = 'Cargando bibliografía...';
       await SB.authUpsert('bibliografia',[
-        {id:'301',orden:1,titulo:'Tratado de Derecho Civil — Parte General',autor:'Julio César Rivera',edicion:'Edición 2023 · Tapa dura',descripcion:'Manual de referencia para Derecho Civil I y II.',precio:12000,drive:''},
-        {id:'302',orden:2,titulo:'Manual de Derecho Constitucional',autor:'Néstor Pedro Sagüés',edicion:'Edición 2022',descripcion:'Bibliografía obligatoria para Derecho Constitucional.',precio:9500,drive:''},
-        {id:'303',orden:3,titulo:'Derecho Penal — Parte General',autor:'Eugenio Raúl Zaffaroni',edicion:'Edición 2021',descripcion:'Texto de cátedra para Derecho Penal I.',precio:11000,drive:''},
+        {id:'301',anio:'1° año',materia:'Introducción al Derecho',titulo:'Tratado de Derecho Civil — Parte General',autor:'Julio César Rivera',paginas:420,precio:Math.ceil(420/2)*PRECIO_HOJA,drive:''},
+        {id:'302',anio:'2° año',materia:'Derecho Constitucional',titulo:'Manual de Derecho Constitucional',autor:'Néstor Pedro Sagüés',paginas:380,precio:Math.ceil(380/2)*PRECIO_HOJA,drive:''},
+        {id:'303',anio:'2° año',materia:'Derecho Penal I',titulo:'Derecho Penal — Parte General',autor:'Eugenio Raúl Zaffaroni',paginas:350,precio:Math.ceil(350/2)*PRECIO_HOJA,drive:''},
       ]).catch(()=>{}); total += 3;
     }
     if (total > 0) {
@@ -1118,8 +1118,8 @@ function iniciarListeners() {
       if (currentPanel === 'codigos') renderCodigos();
     }).catch(e => console.warn('Error cargando codigos:', e.message)),
 
-    bibliografia: () => SB.select('bibliografia', 'order=orden.asc,id.asc').then(rows => {
-      DATA.bibliografia = rows.map(r => ({...r, precio:Number(r.precio)||0, orden:Number(r.orden)||0}));
+    bibliografia: () => SB.select('bibliografia', 'order=id.asc').then(rows => {
+      DATA.bibliografia = rows.map(r => ({...r, año:r.anio||r.año, precio:Number(r.precio)||0, paginas:Number(r.paginas)||0}));
       if (currentPanel === 'bibliografia') renderBibliografia();
     }).catch(e => console.warn('Error cargando bibliografia (¿falta crear la tabla?):', e.message)),
 
@@ -1765,22 +1765,22 @@ function renderCodigos() {
       </tr>`).join('');
 }
 
-// Bibliografía: listado 100% independiente de Apuntes, organizado con la misma taxonomía año/materia
+// Bibliografía: listado 100% independiente de Apuntes, misma organización año/materia y mismo cálculo de precio ($55/hoja)
 function renderBibliografia() {
   const tb = document.getElementById('tb-bibliografia');
   if (!tb) return;
-  const rows = [...DATA.bibliografia].sort((x,y)=>(x.orden||0)-(y.orden||0));
-  tb.innerHTML = rows.length === 0
-    ? '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:24px;">Sin bibliografía cargada.</td></tr>'
-    : rows.map(b => {
+  tb.innerHTML = DATA.bibliografia.length === 0
+    ? '<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:24px;">Sin bibliografía. Agregá el primero.</td></tr>'
+    : DATA.bibliografia.map(b => {
         const mat  = DATA.materias.find(m => String(m.id) === String(b.materia_id));
         const anio = mat ? DATA.anios.find(an => String(an.id) === String(mat.anio_id)) : null;
         return `<tr>
         <td class="td-bold">${esc(b.titulo)||'—'}</td>
-        <td>${esc(mat?.nombre||'—')}</td>
-        <td><span class="badge badge-blue">${esc(anio?.nombre||'—')}</span></td>
         <td>${esc(b.autor)||'—'}</td>
-        <td style="font-weight:700;color:var(--blue);">$${Number(b.precio||0).toLocaleString('es-AR')}</td>
+        <td>${esc(mat?.nombre||'—')}</td>
+        <td><span class="badge badge-blue">${esc(anio?.nombre||b.año||'—')}</span></td>
+        <td>${b.paginas||'—'} págs.</td>
+        <td style="font-weight:700;color:var(--blue);">${(()=>{const h=Math.ceil((Number(b.paginas)||1)/2);return '$'+(h*PRECIO_HOJA).toLocaleString('es-AR')+' ('+h+' hjs.)';})()}</td>
         <td>${b.drive ? '<a href="'+esc(b.drive)+'" target="_blank" style="color:var(--blue);font-size:12px;">Ver →</a>' : '<span style="color:var(--gray-400);">—</span>'}</td>
         <td class="td-actions">
           <button class="btn-secondary btn-sm" onclick="editarItem('libro','${b.id}')">Editar</button>
@@ -2165,8 +2165,8 @@ const FORMS = {
       </div>
     </div>`,
 
-  // Bibliografía: formulario propio, independiente del de Apuntes/ECódigos,
-  // pero organizado con la MISMA taxonomía de año/materia (reutiliza DATA.anios/DATA.materias)
+  // Bibliografía: mismo formulario y misma lógica de precio que Apuntes
+  // (año/materia compartidos + $55 por hoja doble faz), sólo se agrega "Autor".
   libro: (d={}) => {
     const materiasOpts = DATA.materias.map(m => {
       const anio = DATA.anios.find(a => String(a.id) === String(m.anio_id));
@@ -2174,20 +2174,24 @@ const FORMS = {
     }).join('');
     return `
     <div class="form-grid">
-      <div class="f-field span2"><label class="f-lbl">Título *</label><input class="f-input" id="mf-lib-titulo" value="${esc(d.titulo||'')}" placeholder="Tratado de Derecho Civil"></div>
+      <div class="f-field span2"><label class="f-lbl">Título del libro *</label><input class="f-input" id="mf-titulo" value="${esc(d.titulo||'')}" placeholder="Ej: Tratado de Derecho Civil — Parte General"></div>
+      <div class="f-field span2"><label class="f-lbl">Autor</label><input class="f-input" id="mf-lib-autor" value="${esc(d.autor||'')}" placeholder="Ej: Julio César Rivera"></div>
       <div class="f-field span2"><label class="f-lbl">Materia *</label>
-        <select class="f-select" id="mf-lib-materia-id">
+        <select class="f-select" id="mf-materia-id">
           <option value="">— Seleccioná una materia —</option>
           ${materiasOpts}
         </select>
-        <div style="font-size:11px;color:var(--gray-400);margin-top:4px;">¿Falta un año o materia? Se gestionan desde el panel de <strong>Apuntes</strong> y se comparten automáticamente con Bibliografía.</div>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:4px;">Los años y materias se gestionan desde el panel de <strong>Apuntes</strong> y se comparten automáticamente con Bibliografía.</div>
       </div>
-      <div class="f-field"><label class="f-lbl">Autor</label><input class="f-input" id="mf-lib-autor" value="${esc(d.autor||'')}" placeholder="Julio César Rivera"></div>
-      <div class="f-field"><label class="f-lbl">Edición</label><input class="f-input" id="mf-lib-edicion" value="${esc(d.edicion||'')}" placeholder="Edición 2023"></div>
-      <div class="f-field span2"><label class="f-lbl">Descripción</label><input class="f-input" id="mf-lib-desc" value="${esc(d.descripcion||'')}" placeholder="Breve descripción del libro"></div>
-      <div class="f-field"><label class="f-lbl">Precio ($) *</label><input type="number" class="f-input" id="mf-lib-precio" value="${d.precio||''}" placeholder="12000"></div>
-      <div class="f-field"><label class="f-lbl">Orden</label><input type="number" class="f-input" id="mf-lib-orden" value="${d.orden||0}" placeholder="1"></div>
-      <div class="f-field span2"><label class="f-lbl">Link de Google Drive (opcional)</label><input class="f-input" id="mf-lib-drive" value="${esc(d.drive||'')}" placeholder="https://drive.google.com/..."></div>
+      <div class="f-field"><label class="f-lbl">Páginas</label><input type="number" class="f-input" id="mf-paginas" value="${d.paginas||''}" placeholder="180" oninput="actualizarPrecioModal()"></div>
+      <div class="f-field">
+        <label class="f-lbl">Precio (calculado automático)</label>
+        <div style="background:#EFF6FF;border-radius:8px;padding:9px 13px;font-size:12px;color:#1E40AF;line-height:1.5;" id="mf-precio-info">
+          💡 <strong>$${PRECIO_HOJA} × hojas doble faz</strong> · Con ${d.paginas||0} págs. = ${Math.ceil((Number(d.paginas)||1)/2)} hojas = <strong>$${Math.ceil((Number(d.paginas)||1)/2)*PRECIO_HOJA}</strong>
+        </div>
+        <input type="hidden" id="mf-precio" value="${Math.ceil((Number(d.paginas)||1)/2)*PRECIO_HOJA}">
+      </div>
+      <div class="f-field span2"><label class="f-lbl">Link de Google Drive</label><input class="f-input" id="mf-drive" value="${esc(d.drive||'')}" placeholder="https://drive.google.com/..."></div>
     </div>`;
   },
 };
@@ -2376,21 +2380,18 @@ async function guardarModal() {
       col = 'codigos';
 
     } else if (modalType === 'libro') {
-      const materiaId = document.getElementById('mf-lib-materia-id').value;
-      const titulo    = document.getElementById('mf-lib-titulo').value.trim();
-      const precio    = parseInt(document.getElementById('mf-lib-precio').value)||0;
+      const materiaId = document.getElementById('mf-materia-id').value;
+      const titulo    = document.getElementById('mf-titulo').value.trim();
+      const paginas   = parseInt(document.getElementById('mf-paginas').value)||0;
       if (!titulo)    { toast('El título es obligatorio','err'); btn.disabled=false; btn.textContent='Guardar'; return; }
       if (!materiaId) { toast('Seleccioná una materia','err'); btn.disabled=false; btn.textContent='Guardar'; return; }
-      if (!precio)    { toast('El precio es obligatorio','err'); btn.disabled=false; btn.textContent='Guardar'; return; }
       obj = {
         titulo,
-        materia_id:  parseInt(materiaId),
-        autor:       document.getElementById('mf-lib-autor').value.trim(),
-        edicion:     document.getElementById('mf-lib-edicion').value.trim(),
-        descripcion: document.getElementById('mf-lib-desc').value.trim(),
-        precio,
-        orden:       parseInt(document.getElementById('mf-lib-orden').value)||0,
-        drive:       document.getElementById('mf-lib-drive').value.trim(),
+        materia_id: parseInt(materiaId),
+        autor:  document.getElementById('mf-lib-autor').value.trim(),
+        paginas,
+        precio: Math.ceil((paginas||1)/2)*PRECIO_HOJA,
+        drive:  document.getElementById('mf-drive').value.trim(),
       };
       col = 'bibliografia';
     }
@@ -2418,8 +2419,8 @@ async function guardarModal() {
           DATA.codigos = rows.map(r => ({...r, badgeBg:r.badge_bg||r.badgeBg}));
           renderCodigos();
         }),
-        bibliografia: () => SB.select('bibliografia','order=orden.asc,id.asc').then(rows => {
-          DATA.bibliografia = rows.map(r => ({...r, precio:Number(r.precio)||0, orden:Number(r.orden)||0}));
+        bibliografia: () => SB.select('bibliografia','order=id.asc').then(rows => {
+          DATA.bibliografia = rows.map(r => ({...r, año:r.anio||r.año, precio:Number(r.precio)||0, paginas:Number(r.paginas)||0}));
           renderBibliografia();
         }),
         anios: () => Promise.all([
